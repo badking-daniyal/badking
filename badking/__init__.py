@@ -58,6 +58,10 @@ from .ai import AIAssistant, EchoLLM, IntentRouter, Memory, OpenAICompatibleLLM,
 from .flows import Flow
 from .adapters import AdapterRegistry, BaleAdapter
 
+# مکالمه و صفحهبندی
+from .conversation import Conversation, ConversationManager, ConversationTimeout
+from .keyboards import KeyboardPaginator
+
 # زیرساخت
 from .connectors import Auth, Connector
 from .jobs import JobQueue, Scheduler
@@ -79,6 +83,7 @@ __all__ += [
     "RateLimiter", "OffsetStore",
     "AIAssistant", "EchoLLM", "IntentRouter", "Memory", "OpenAICompatibleLLM", "SimpleRAG",
     "Flow", "AdapterRegistry", "BaleAdapter",
+    "Conversation", "ConversationManager", "ConversationTimeout", "KeyboardPaginator",
     "Auth", "Connector", "JobQueue", "Scheduler", "EventBus", "Store", "OCR", "Voice",
     "Metrics", "metrics", "AntiSpam", "AuditLog", "Captcha", "RBAC", "Secrets",
     "DryBot", "Health", "logging_mw", "metrics_mw", "antispam_mw", "KNOWN_METHODS",

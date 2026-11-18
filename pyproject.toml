@@ -40,8 +40,11 @@ dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5", "mypy>=1.10"]
 badking = "badking.cli.main:main"
 
 [project.urls]
-Homepage = "https://github.com/"
-Documentation = "https://docs.bale.ai/"
+Homepage = "https://badking.ir"
+Documentation = "https://badking.ir"
+Repository = "https://github.com/badking-daniyal/badking"
+Issues = "https://github.com/badking-daniyal/badking/issues"
+Changelog = "https://github.com/badking-daniyal/badking/blob/main/docs/roadmap.md"
 
 [tool.setuptools.packages.find]
 include = ["badking*"]

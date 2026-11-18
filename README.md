@@ -1,120 +1,397 @@
 # BADKING
 
-**فریمورک همه کاره، async و AI-Native برای ساخت رباتهای [بله (Bale)](https://www.bale.ai/).**
-Superset of aiobale — هر آنچه aiobale دارد، بهتر و بیشتر.
+**فریمورک همه کاره، async و AI-Native برای ساخت ربات‌های [بله (Bale)](https://www.bale.ai/).**
 
-> از کسی که کد بلد نیست تا یک هکر حرفهای: سه لایه دسترسی، بدون محدودیت، و هر چیزی قابل ساخت.
+سوپرست aiobale — هر چیزی که aiobale دارد، به‌علاوه چیزهایی که ندارد.
 
----
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![Tests](https://img.shields.io/badge/tests-98%20passed-brightgreen)]()
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-badking.ir-orange)](https://badking.ir)
 
-## وضعیت: فاز ۱ تا ۹ پیادهسازی شد ✅ — **87 تست پاساند**
-
-| فاز | محتوا | وضعیت |
-|---|---|---|
-| ۱ | اسکلت، مدلهای Pydantic، Bot/Dispatcher، Long Polling | ✅ |
-| ۲ | FSM + Storage، Rate Limit، Update Recovery | ✅ |
-| ۳ | MiniApp (HMAC)، سفیر، پرداخت، Business API | ✅ |
-| ۴ | AI: حافظه، شخصیت، Tool Calling، Intent، RAG | ✅ |
-| ۵ | Flow Builder بدونکد، CLI جادویی، Adapter | ✅ |
-| ۶ | Connector عمومی، Scheduler، Job Queue، Event Bus، ORM، Voice/OCR | ✅ |
-| ۷ | Observability، امنیت، Dry-run، Health، Docker، CI/CD | ✅ |
-| ۸ | لایه Hybrid ایزوله + سازگاری aiogram/PTB | ✅ |
-| ۹ | صادرات بسته، لایسنس، مستندات | ✅ |
+> از کسی که کد بلد نیست تا یک مهندس حرفه‌ای: سه لایه دسترسی، بدون محدودیت، و هر چیزی قابل ساخت.
 
 ---
 
-## شروع در ۳۰ ثانیه (بدون توکن)
+## چرا BADKING؟
+
+**بدون محدودیت.** هیچ کاری نیست که کتابخانه جلوی تو بگیرد. هر متدی که API بله دارد، در دسترس است — با تایپ‌گذاری کامل، یا با JSON خام.
+
+**سه لایه، یک کتابخانه.** یک نفر بدون کد ربات می‌سازد، یک برنامه‌نویس FSM و AI می‌خواهد، یک مهندس به RPC خام نیاز دارد. هر سه در BADKING هستند و لایه پایین‌تر همیشه باز است.
+
+**AI از روز اول.** دستیار با tool calling، RAG روی فایل‌های خودت، حافظه per-user. نه به‌عنوان افزونه، بلکه بخشی از هسته.
+
+**صادق.** هر جا حدسی زده‌ایم، گفته‌ایم. هر جا API بله چیزی نمی‌دهد، ادعا نکرده‌ایم.
+
+---
+
+## نصب
 
 ```bash
-pip install -e .
-python examples/echo_bot.py --mock
+# از PyPI
+pip install badking
+
+# یا با uv (سریع‌تر)
+uv pip install badking
+
+# یا آخرین نسخه توسعه
+pip install git+https://github.com/badking-daniyal/badking.git
 ```
 
-خروجی:
+نیازمندی: Python 3.9 یا بالاتر.
 
-```
-→ سلام! من ربات BADKING هستم 🤖
-→ شما گفتید: سلام دنیا
-```
+---
 
-## ربات بدون نوشتن کد
-
-```bash
-badking new mybot          # ساخت ربات
-badking dry-run            # تست جریان بدون توکن
-badking codegen            # تبدیل جریان به کد پایتون
-```
-
-فایل `flow.json` را ویرایش کن تا رباتت عوض شود — حتی بدون دانستن پایتون.
-
-## ربات با کد (با توکن `@botfather`)
+## شروع در ۵ دقیقه
 
 ```python
 import asyncio
 from badking import Bot, Dispatcher, F
 
-bot = Bot("123456789:TOKEN")
+bot = Bot("123456789:TOKEN_FROM_BOTFATHER")
 dp = Dispatcher()
 
 @dp.message(F.text == "/start")
 async def start(message, bot):
-    await bot.send_message(message.chat.id, "خوش آمدید!")
+    await bot.send_message(message.chat.id, "خوش آمدی! 🚀")
+
+@dp.message(F.text)
+async def echo(message, bot):
+    await bot.send_message(message.chat.id, f"شما گفتید: {message.text}")
 
 asyncio.run(bot.polling(dp))
 ```
 
-## دستیار هوشمند (AI-Native)
+توکن را از [@botfather](https://ble.ir/botfather) در بله بگیر. همین. بدون لاگین شماره، بدون session file.
 
-```python
-from badking import AIAssistant, EchoLLM
+**بدون توکن هم می‌شود تست کرد:**
 
-assistant = AIAssistant(EchoLLM(), persona="دستیار فارسی مودب و کوتاه")
-answer = await assistant.reply("user123", "سلام")
+```bash
+python examples/echo_bot.py --mock
 ```
 
-## ارسال هر چیزی به هر جا (Connector)
+---
+
+## نمونه‌های واقعی
+
+### ۱. ویزارد چندمرحله‌ای (Conversation)
+
+پرسش‌وپاسخ خطی بدون دست‌وپنجه نرم کردن با FSM:
+
+```python
+from badking import Bot, Dispatcher, F, ConversationManager
+
+bot = Bot("TOKEN")
+dp = Dispatcher()
+convos = ConversationManager()
+dp.register_middleware(convos)
+
+@dp.message(F.text == "/register")
+async def register(message, bot):
+    async with convos.conversation(bot, message.chat.id) as conv:
+        await conv.send("اسم کاملت چیه؟")
+        name = await conv.get_response(timeout=60)
+
+        await conv.send("شماره تماس؟")
+        phone = await conv.get_response(timeout=60)
+
+        await conv.send(f"ثبت شد ✅\nنام: {name.text}\nتلفن: {phone.text}")
+
+asyncio.run(bot.polling(dp))
+```
+
+اگر کاربر جواب ندهد، `ConversationTimeout` می‌گیری. اگر چت دیگری پیام بدهد، مزاحم مکالمه نمی‌شود.
+
+### ۲. منوی چندصفحه‌ای (KeyboardPaginator)
+
+```python
+from badking import KeyboardPaginator, F
+
+products = ["کتاب پایتون", "هدفون", "ماوس", "کیبورد", "مانیتور", "لپ‌تاپ"]
+paginator = KeyboardPaginator(products, per_page=3, prefix="shop", columns=1)
+
+@dp.message(F.text == "/shop")
+async def shop(message, bot):
+    await bot.send_message(
+        message.chat.id, "محصولی انتخاب کن:",
+        reply_markup=paginator.markup(page=0).model_dump(exclude_none=True),
+    )
+
+@dp.callback_query(F.data.startswith("shop:"))
+async def on_shop(cq, bot):
+    parsed = paginator.parse(cq.data)
+    if not parsed:
+        return
+    kind, value = parsed
+    if kind == "page":
+        await bot.edit_message_text(
+            cq.message.chat.id, cq.message.message_id, "محصولی انتخاب کن:",
+            reply_markup=paginator.markup(page=value).model_dump(exclude_none=True),
+        )
+    elif kind == "item":
+        await bot.answer_callback_query(cq.id, f"انتخاب شد: {products[value]}")
+```
+
+دکمه‌های «قبلی / بعدی» و شماره صفحه خودکار ساخته می‌شوند.
+
+### ۳. FSM پایدار با SQLite
+
+```python
+from badking import Bot, Dispatcher, F, State, StatesGroup, SQLiteStorage
+
+class Order(StatesGroup):
+    item = State()
+    address = State()
+
+dp = Dispatcher(storage=SQLiteStorage("orders.db"))
+bot = Bot("TOKEN")
+
+@dp.message(F.text == "/order")
+async def start_order(message, state):
+    await state.set_state(Order.item)
+    await bot.send_message(message.chat.id, "چه چیزی می‌خواهی؟")
+
+@dp.message(Order.item)
+async def get_item(message, state):
+    await state.update_data(item=message.text)
+    await state.set_state(Order.address)
+    await bot.send_message(message.chat.id, "آدرس تحویل؟")
+
+@dp.message(Order.address)
+async def get_address(message, state):
+    data = await state.get_data()
+    await state.clear()
+    await bot.send_message(
+        message.chat.id,
+        f"سفارش ثبت شد ✅\nکالا: {data['item']}\nآدرس: {message.text}",
+    )
+```
+
+ربات را ری‌استارت کن — state سر جایش است.
+
+### ۴. دستیار هوشمند با ابزار
+
+```python
+from badking import AIAssistant, OpenAICompatibleLLM
+
+llm = OpenAICompatibleLLM(
+    base_url="https://api.openai.com/v1",
+    api_key="sk-...",
+    model="gpt-4o-mini",
+)
+
+assistant = AIAssistant(
+    llm,
+    persona="دستیار فروشگاه، مودب و کوتاه جواب بده",
+    tools=[check_order_status, get_price],   # توابع خودت
+)
+
+answer = await assistant.reply(user_key=str(message.from_user.id), text=message.text)
+await bot.send_message(message.chat.id, answer)
+```
+
+مدل خودش تصمیم می‌گیرد کدام ابزار را صدا بزند. اگر ابزار خطا بدهد، کل مکالمه نمی‌شکند.
+
+### ۵. RAG روی مستندات خودت
+
+```python
+from badking import SimpleRAG, AIAssistant, OpenAICompatibleLLM
+
+rag = SimpleRAG()
+rag.add_text(open("faq.txt", encoding="utf-8").read(), source="faq")
+rag.add_text(open("policies.txt", encoding="utf-8").read(), source="policies")
+
+assistant = AIAssistant(OpenAICompatibleLLM(...), rag=rag)
+# حالا ربات از محتوای فایل‌های تو جواب می‌دهد، نه از خودش
+```
+
+### ۶. اتصال به هر سرویس خارجی
 
 ```python
 from badking import Connector, Auth
 
-api = Connector(base_url="https://api.zarinpal.com", auth=Auth(type="bearer", token="..."))
-result = await api.post("/payment/request", json_body={"amount": 1000})
+zarinpal = Connector(
+    base_url="https://api.zarinpal.com",
+    auth=Auth(type="bearer", token="..."),
+    retries=3,
+)
+
+result = await zarinpal.post("/pg/v4/payment/request.json", json_body={
+    "merchant_id": "....",
+    "amount": 50000,
+    "callback_url": "https://example.com/callback",
+})
 ```
+
+Retry خودکار روی 5xx و 429، با احترام به `Retry-After`.
+
+### ۷. پرداخت داخل بله
+
+```python
+from badking import PaymentToolkit
+
+pay = PaymentToolkit(bot)
+
+await pay.send_invoice(
+    chat_id=message.chat.id,
+    title="کتاب پایتون",
+    description="نسخه چاپی، ارسال رایگان",
+    payload="order-1234",
+    provider_token="...",
+    prices=[{"label": "کتاب", "amount": 500000}],
+)
+```
+
+### ۸. مینی‌اپ با اعتبارسنجی امن
+
+```python
+from badking import validate_init_data
+
+# در سرور مینی‌اپ، initData را از کلاینت بگیر
+data = validate_init_data(init_data_from_client, bot_token="123456:ABC...")
+print(data.user.id, data.user.first_name)   # امضا تأیید شد
+```
+
+الگوریتم دقیقاً مطابق مستندات رسمی بله: فیلدها الفبایی مرتب، با `\n` متصل، HMAC-SHA256.
+
+---
+
+## ربات بدون نوشتن کد
+
+```bash
+badking new mybot       # ساخت پروژه کامل
+badking dry-run         # تست جریان بدون توکن
+badking codegen         # تبدیل flow.json به کد پایتون
+badking setup           # تنظیم توکن
+badking run             # اجرا
+```
+
+`flow.json` را با Notepad ویرایش کن:
+
+```json
+{
+  "start": "welcome",
+  "steps": {
+    "welcome": {"type": "message", "text": "سلام! 👋", "next": "ask_name"},
+    "ask_name": {"type": "ask", "text": "اسمت چیه؟", "save": "name", "next": "done"},
+    "done": {"type": "message", "text": "خوش آمدی {name}!"}
+  }
+}
+```
+
+بدون یک خط پایتون، یک ربات مکالمه‌ای داری. وقتی بزرگ شد، `badking codegen` همان جریان را به کد تبدیل می‌کند.
+
+---
 
 ## سه لایه دسترسی
 
-1. **لایه صفر (بدون کد)**: Flow Builder، CLI، Dry-run
-2. **لایه بالا (پایتون)**: Dispatcher، FSM، Filterها، AI، Connector
-3. **لایه خام**: `bot.request("METHOD_NAME", {...})` — دسترسی مستقیم به تمام متدها و JSON خام
+| لایه | مخاطب | ابزار |
+|---|---|---|
+| **۰ — بدون کد** | صاحب کسب‌وکار | Flow Builder، CLI، dry-run |
+| **۱ — پایتون** | برنامه‌نویس | Dispatcher، FSM، Filter، AI، Connector، Conversation |
+| **۲ — خام** | مهندس | `bot.request("anyMethod", {...})` — هر متد، هر JSON |
 
-هیچ چیزی مخفی نیست. هر کاری لایه بالا میکند، لایه خام هم میکند.
+قانون: **هر کاری لایه ۱ می‌کند، لایه ۲ هم می‌کند.** چیزی پنهان نیست.
 
-## آنچه BADKING دارد و aiobale ندارد
+---
 
-- توکن رسمی `@botfather` (نه internal API با لاگین شماره)
-- MiniApp + اعتبارسنجی HMAC `initData`
-- سفیر (OTP، قالب، idempotency)، پرداخت فاکتور رسمی، Business API
-- لایه AI کامل (حافظه، شخصیت، Tool Calling، RAG)
-- بدونکدی: Flow Builder + CLI + Dry-run
-- Connector به هر سرویس خارجی، Multi-platform Adapter
-- Observability، امنیت، Docker، CI/CD
+## مقایسه با aiobale
+
+| قابلیت | aiobale | BADKING |
+|---|---|---|
+| توکن رسمی @botfather | ❌ (لاگین شماره) | ✅ |
+| Self-bot / Internal API | ✅ | ✅ (پلاگین ایزوله، پیش‌فرض خاموش) |
+| FSM + SQLite | ✅ | ✅ |
+| Conversation (ویزارد) | ✅ | ✅ |
+| KeyboardPaginator | ✅ | ✅ |
+| Magic Filter `F` | ✅ | ✅ |
+| Middleware + Rate Limit | ✅ | ✅ |
+| Webhook Server | ✅ | ✅ |
+| MiniApp + HMAC | ❌ | ✅ |
+| سفیر (OTP، قالب) | ❌ | ✅ |
+| پرداخت فاکتور رسمی | ❌ | ✅ |
+| Business API | ❌ | ✅ |
+| AI: Tool Calling + RAG | ❌ | ✅ |
+| بدون‌کد (Flow Builder) | ❌ | ✅ |
+| Connector به هر API | ❌ | ✅ |
+| Observability (Prometheus) | ❌ | ✅ |
+| Docker + CI آماده | ❌ | ✅ |
+| مستندات فارسی | ❌ | ✅ |
+
+---
+
+## ساختار پروژه
+
+```
+badking/
+├── core/           Bot، Dispatcher، Router، خطاها
+├── types/          مدل‌های Pydantic (Message، Update، Keyboard، ...)
+├── filters/        Magic Filter F
+├── fsm/            State، StatesGroup، FSMContext
+├── storage/        Memory، SQLite
+├── conversation/   ویزارد پرسش‌وپاسخ
+├── keyboards/      KeyboardPaginator
+├── miniapp/        اعتبارسنجی HMAC initData
+├── safir/          سرویس سفیر (OTP، قالب)
+├── payments/       فاکتور و پرداخت
+├── business/       Business API
+├── ai/             LLM، حافظه، RAG، دستیار
+├── flows/          Flow Builder بدون کد
+├── connectors/     HTTP به هر سرویس
+├── jobs/           Scheduler، JobQueue
+├── events/         Event Bus
+├── orm/            Store
+├── media/          Voice، OCR
+├── observability/  Metrics، لاگ JSON
+├── security/       AntiSpam، AuditLog، RBAC، Secrets
+├── testing/        DryBot، Health
+├── middleware/     logging، metrics، antispam
+├── ratelimit/      Rate Limiter با اولویت
+├── recovery/       Offset Store اتمیک
+├── adapters/       Multi-platform
+├── compat/         سازگاری aiogram/PTB
+└── hybrid/         Self-bot (ایزوله، پیش‌فرض خاموش)
+```
+
+---
 
 ## مرز صادقانه
 
-- لایه self-bot (چیزهایی مثل خواندن تاریخچه قدیمی) بهصورت **پلاگین ایزوله و غیرفعال پیشفرض** است — ببینید [`badking/hybrid/README.md`](badking/hybrid/README.md). دلیلش ریسک امنیتی و بسته شدن اکانت است.
-- اعدادی مثل «4096 کاراکتر» یا «حذف 48 ساعته» در مستندات رسمی نیامدهاند؛ در BADKING پیشفرض قابلتنظیماند و از `retry_after` سرور یاد میگیرند.
+این‌ها را باید بدانی، نه اینکه بعداً کشف کنی:
+
+- **هر کاری API رسمی بله ندهد، با توکن رسمی از هیچ کتابخانه‌ای برنمی‌آید.** نه BADKING، نه aiobale، نه هیچ‌کس دیگر.
+- **تاریخچه کامل پیام‌ها** (قدیمی‌تر از ۲۴ ساعت) با توکن رسمی ممکن نیست. `iter_messages` ما آپدیت‌های موجود را می‌پیماید. برای تاریخچه کامل، لایه hybrid لازم است.
+- **Self-bot ریسک دارد.** لایه `hybrid` پیش‌فرض خاموش است و بدون `ack_risk=True` فعال نمی‌شود. دلیلش: Internal API غیررسمی است، می‌شکند، و می‌تواند اکانت شخصی‌ات را ببندد. ببین [`badking/hybrid/README.md`](badking/hybrid/README.md).
+- **اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت»** در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از `retry_after` واقعی سرور یاد می‌گیرند.
+- **پیاده‌سازی کامل RPC داخلی self-bot** (۸۰+ متد) هنوز انجام نشده. رابط و ایزولاسیون آماده است؛ خود RPC به‌عنوان پلاگین جداگانه منتشر می‌شود.
+
+---
 
 ## مستندات
 
-- [`docs/bale-api.md`](docs/bale-api.md) — خلاصه مستندات رسمی بله
-- [`docs/roadmap.md`](docs/roadmap.md) — نقشه راه
-- [`badking/hybrid/README.md`](badking/hybrid/README.md) — هشدار self-bot
+- 🌐 **[badking.ir](https://badking.ir)** — مستندات کامل فارسی
+- 📘 [`docs/bale-api.md`](docs/bale-api.md) — خلاصه مستندات رسمی بله
+- 🗺️ [`docs/roadmap.md`](docs/roadmap.md) — نقشه راه و وضعیت فازها
+- ⚠️ [`badking/hybrid/README.md`](badking/hybrid/README.md) — هشدار self-bot
+- 🚀 [`START_HERE.md`](START_HERE.md) — راهنمای قدم‌به‌قدم برای شروع
+
+---
 
 ## تست
 
 ```bash
-python -m pytest tests/ -q     # 87 passed
+python -m pytest tests/ -q     # 98 passed
 ```
+
+تست‌ها شامل وکتورهای قراردادی مستقل برای HMAC، تست رگرسیون برای باگ‌های ممیزی، و تست‌های end-to-end با mock server هستند.
+
+---
+
+## مشارکت
+
+Issue و PR باز است. اگر باگ پیدا کردی، بگو — ممیزی کد بخشی از فرهنگ این پروژه است.
+
+---
 
 ## مجوز
 

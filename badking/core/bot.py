@@ -267,6 +267,37 @@ class Bot:
         # پردازش موفق هندلرها آنرا جلو ببرد، تا آپدیتی گم نشود (at-least-once).
         return updates
 
+    async def iter_messages(self, chat_id: int | str, limit: int = 50,
+                            page_size: int = 100, offset: int | None = None):
+        """پیمایش تاریخچه پیام‌های یک چت با getUpdates (آپدیت‌های مربوط به آن چت).
+
+        توجه: API رسمی بله متد اختصاصی تاریخچه ندارد؛ این متد از آپدیت‌های
+        موجود استفاده می‌کند. برای تاریخچه کامل و قدیمی‌تر از ۲۴ ساعت،
+        لایه hybrid (self-bot) لازم است.
+        """
+        from ..types.message import Message
+
+        collected = 0
+        current = offset if offset is not None else self._offset
+        while collected < limit:
+            batch = await self.get_updates(offset=current, limit=page_size, timeout=0)
+            if not batch:
+                break
+            for upd in batch:
+                current = upd.update_id + 1
+                msg = upd.effective_message
+                if msg is None:
+                    continue
+                if str(getattr(msg.chat, "id", None)) != str(chat_id):
+                    continue
+                yield msg
+                collected += 1
+                if collected >= limit:
+                    break
+            if len(batch) < page_size:
+                break
+        self._offset = current
+
     # ---------- Long Polling ----------
 
     async def polling(self, dispatcher: Any, *, limit: int = 100, timeout: int = 10,
