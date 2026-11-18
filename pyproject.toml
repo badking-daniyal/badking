@@ -41,7 +41,7 @@ badking = "badking.cli.main:main"
 
 [project.urls]
 Homepage = "https://badking.ir"
-Documentation = "https://badking.ir"
+Documentation = "https://docs.badking.ir"
 Repository = "https://github.com/badking-daniyal/badking"
 Issues = "https://github.com/badking-daniyal/badking/issues"
 Changelog = "https://github.com/badking-daniyal/badking/blob/main/docs/roadmap.md"

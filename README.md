@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![Tests](https://img.shields.io/badge/tests-98%20passed-brightgreen)]()
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-badking.ir-orange)](https://badking.ir)
+[![Docs](https://img.shields.io/badge/docs-docs.badking.ir-orange)](https://docs.badking.ir)
 
 > از کسی که کد بلد نیست تا یک مهندس حرفه‌ای: سه لایه دسترسی، بدون محدودیت، و هر چیزی قابل ساخت.
 
@@ -369,7 +369,7 @@ badking/
 
 ## مستندات
 
-- 🌐 **[badking.ir](https://badking.ir)** — مستندات کامل فارسی
+- 🌐 **[docs.badking.ir](https://docs.badking.ir)** — مستندات کامل فارسی
 - 📘 [`docs/bale-api.md`](docs/bale-api.md) — خلاصه مستندات رسمی بله
 - 🗺️ [`docs/roadmap.md`](docs/roadmap.md) — نقشه راه و وضعیت فازها
 - ⚠️ [`badking/hybrid/README.md`](badking/hybrid/README.md) — هشدار self-bot
