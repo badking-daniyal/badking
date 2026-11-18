@@ -7,7 +7,7 @@ Superset of aiobale — هر آنچه aiobale دارد، بهتر و بیشتر.
 
 ---
 
-## وضعیت: فاز ۱ تا ۹ پیادهسازی شد ✅ — **52 تست پاساند**
+## وضعیت: فاز ۱ تا ۹ پیادهسازی شد ✅ — **87 تست پاساند**
 
 | فاز | محتوا | وضعیت |
 |---|---|---|
@@ -114,7 +114,7 @@ result = await api.post("/payment/request", json_body={"amount": 1000})
 ## تست
 
 ```bash
-python -m pytest tests/ -q     # 52 passed
+python -m pytest tests/ -q     # 87 passed
 ```
 
 ## مجوز
