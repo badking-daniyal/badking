@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BADKING — فریمورک ربات بله</title>
+<meta name="description" content="فریمورک همه کاره، async و AI-Native برای ساخت ربات‌های بله. بدون محدودیت، سه لایه دسترسی، AI از روز اول.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
+<style>
+:root{
+  --bg:#0a0a0c; --panel:#121216; --panel2:#17171d; --line:#26262f;
+  --fg:#e8e8ee; --muted:#9595a8; --accent:#ff8a3d; --accent2:#ffb877;
+  --code:#0d0d11; --green:#4ade80; --red:#f87171;
+}
+[data-theme="light"]{
+  --bg:#fbfbfd; --panel:#fff; --panel2:#f4f4f8; --line:#e2e2ea;
+  --fg:#14141a; --muted:#5c5c70; --accent:#d9660f; --accent2:#b8500a;
+  --code:#f6f6fa; --green:#15803d; --red:#b91c1c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:"Vazirmatn","Segoe UI",Tahoma,system-ui,sans-serif;
+  line-height:1.85; font-size:16px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:40px}
+/* header */
+header{
+  position:sticky;top:0;z-index:50;background:rgba(10,10,12,.88);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);
+}
+[data-theme="light"] header{background:rgba(251,251,253,.9)}
+.hbar{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:18px}
+.logo{font-size:19px;font-weight:800;letter-spacing:.5px;display:flex;align-items:center;gap:8px;direction:ltr}
+.logo span{color:var(--accent)}
+.hbar nav{margin-inline-start:auto;display:flex;gap:22px;align-items:center;font-size:14.5px}
+.hbar nav a{color:var(--muted);text-decoration:none;transition:color .15s}
+.hbar nav a:hover{color:var(--accent)}
+.iconbtn{
+  background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+  width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:15px;
+  display:grid;place-items:center;transition:.15s;
+}
+.iconbtn:hover{border-color:var(--accent);color:var(--accent)}
+/* sidebar */
+aside{
+  width:236px;flex:0 0 236px;position:sticky;top:76px;
+  align-self:flex-start;max-height:calc(100vh - 96px);overflow-y:auto;
+  padding:28px 0;font-size:14px;
+}
+aside::-webkit-scrollbar{width:5px}
+aside::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+aside h4{
+  font-size:11px;text-transform:uppercase;letter-spacing:1.4px;
+  color:var(--muted);margin:20px 0 8px;font-weight:700;
+}
+aside h4:first-child{margin-top:0}
+aside a{
+  display:block;color:var(--muted);text-decoration:none;
+  padding:5px 10px;border-radius:7px;border-inline-start:2px solid transparent;
+  transition:.13s;
+}
+aside a:hover{color:var(--fg);background:var(--panel2)}
+aside a.active{color:var(--accent);border-inline-start-color:var(--accent);background:var(--panel2)}
+main{flex:1;min-width:0;padding:44px 0 120px}
+/* hero */
+.hero{padding:52px 0 56px;border-bottom:1px solid var(--line);margin-bottom:52px}
+.badge{
+  display:inline-block;background:var(--panel2);border:1px solid var(--line);
+  color:var(--accent);font-size:12.5px;padding:5px 13px;border-radius:20px;
+  margin-bottom:20px;font-weight:600;
+}
+.hero h1{font-size:47px;line-height:1.2;font-weight:800;letter-spacing:-1px;margin-bottom:18px}
+.hero h1 em{color:var(--accent);font-style:normal}
+.hero p.lead{font-size:18.5px;color:var(--muted);max-width:660px;margin-bottom:30px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:34px}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;padding:12px 24px;
+  border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;
+  transition:.16s;border:1px solid transparent;
+}
+.btn.primary{background:var(--accent);color:#0a0a0c}
+.btn.primary:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn.ghost{background:transparent;border-color:var(--line);color:var(--fg)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.stats{display:flex;gap:34px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.stats b{display:block;color:var(--fg);font-size:23px;font-weight:800;line-height:1.3}
+/* sections */
+section{margin-bottom:60px;scroll-margin-top:84px}
+section h2{
+  font-size:29px;font-weight:800;margin-bottom:8px;letter-spacing:-.4px;
+  display:flex;align-items:center;gap:11px;
+}
+section h2::before{
+  content:"";width:4px;height:26px;background:var(--accent);border-radius:2px;
+}
+section > p.sub{color:var(--muted);margin-bottom:24px;font-size:15.5px}
+h3{font-size:19px;font-weight:700;margin:30px 0 12px}
+p{margin-bottom:14px}
+a.inline{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a.inline:hover{border-bottom-color:var(--accent)}
+/* code */
+pre{
+  background:var(--code);border:1px solid var(--line);border-radius:11px;
+  padding:18px 20px;overflow-x:auto;margin:14px 0 20px;
+  direction:ltr;text-align:left;font-size:13.5px;line-height:1.75;
+}
+code{font-family:"JetBrains Mono","Cascadia Code",Consolas,monospace}
+pre code{color:#c9d1d9}
+[data-theme="light"] pre code{color:#24292f}
+p code,li code,td code{
+  background:var(--panel2);border:1px solid var(--line);border-radius:5px;
+  padding:1.5px 6px;font-size:13px;color:var(--accent);
+}
+.kw{color:#ff7b72}.st{color:#a5d6ff}.cm{color:#8b949e}.fn{color:#d2a8ff}.nm{color:#79c0ff}
+[data-theme="light"] .kw{color:#cf222e}
+[data-theme="light"] .st{color:#0a3069}
+[data-theme="light"] .cm{color:#6e7781}
+[data-theme="light"] .fn{color:#8250df}
+[data-theme="light"] .nm{color:#0550ae}
+/* table */
+table{width:100%;border-collapse:collapse;margin:16px 0 22px;font-size:14.5px}
+th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.7px}
+tbody tr:hover{background:var(--panel2)}
+.yes{color:var(--green);font-weight:700}
+.no{color:var(--red);font-weight:700}
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:16px;margin:20px 0}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:20px;transition:.16s;
+}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card h4{font-size:16px;margin-bottom:7px;font-weight:700}
+.card p{font-size:14px;color:var(--muted);margin:0}
+/* callout */
+.note{
+  background:var(--panel);border:1px solid var(--line);
+  border-inline-start:3px solid var(--accent);border-radius:9px;
+  padding:15px 18px;margin:18px 0;font-size:14.5px;
+}
+.note.warn{border-inline-start-color:var(--red)}
+.note b{color:var(--accent)}
+.note.warn b{color:var(--red)}
+ul,ol{margin:12px 0 18px;padding-inline-start:24px}
+li{margin-bottom:8px}
+footer{
+  border-top:1px solid var(--line);padding:34px 0;color:var(--muted);
+  font-size:14px;text-align:center;
+}
+footer a{color:var(--accent);text-decoration:none}
+@media(max-width:900px){
+  aside{display:none}
+  .wrap{padding:0 18px}
+  .hero h1{font-size:33px}
+  .hero p.lead{font-size:16.5px}
+  .hbar nav{display:none}
+  section h2{font-size:23px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px 12px}
+  .stats b{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbar">
+    <div class="logo">BAD<span>KING</span></div>
+    <nav>
+      <a href="#install">نصب</a>
+      <a href="#quickstart">شروع سریع</a>
+      <a href="#examples">نمونه‌ها</a>
+      <a href="#compare">مقایسه</a>
+      <a href="#limits">مرزها</a>
+      <a href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+    <button class="iconbtn" id="theme" title="تغییر تم">◐</button>
+  </div>
+</header>
+
+<div class="wrap">
+<aside>
+  <h4>شروع</h4>
+  <a href="#intro">معرفی</a>
+  <a href="#install">نصب</a>
+  <a href="#quickstart">شروع در ۵ دقیقه</a>
+  <h4>نمونه‌ها</h4>
+  <a href="#examples">همه نمونه‌ها</a>
+  <a href="#conversation">ویزارد مکالمه</a>
+  <a href="#pagination">منوی چندصفحه‌ای</a>
+  <a href="#fsm">FSM پایدار</a>
+  <a href="#ai">دستیار هوشمند</a>
+  <a href="#rag">RAG</a>
+  <a href="#connector">اتصال خارجی</a>
+  <a href="#payment">پرداخت</a>
+  <a href="#miniapp">مینی‌اپ</a>
+  <h4>مرجع</h4>
+  <a href="#layers">سه لایه دسترسی</a>
+  <a href="#nocode">بدون کد</a>
+  <a href="#compare">مقایسه با aiobale</a>
+  <a href="#structure">ساختار پروژه</a>
+  <a href="#limits">مرز صادقانه</a>
+</aside>
+
+<main>
+
+<div class="hero" id="intro">
+  <div class="badge">نسخه ۰.۱.۰ — ۹۸ تست پاس‌شده</div>
+  <h1>ربات بله بساز.<br><em>بدون محدودیت.</em></h1>
+  <p class="lead">
+    فریمورک همه کاره، async و AI-Native برای بله. از کسی که کد بلد نیست تا مهندسی که به RPC خام نیاز دارد — سه لایه دسترسی، همه باز.
+  </p>
+  <div class="cta">
+    <a class="btn primary" href="#install">شروع کن →</a>
+    <a class="btn ghost" href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">مشاهده در GitHub</a>
+  </div>
+  <div class="stats">
+    <div><b>۹۸</b>تست پاس</div>
+    <div><b>۶۲</b>صادرات</div>
+    <div><b>۷۶</b>ماژول</div>
+    <div><b>۳</b>لایه دسترسی</div>
+    <div><b>MIT</b>مجوز</div>
+  </div>
+</div>
+
+<section id="install">
+  <h2>نصب</h2>
+  <p class="sub">Python 3.9 یا بالاتر. بدون وابستگی سنگین.</p>
+<pre><code><span class="cm"># از PyPI</span>
+pip install badking
+
+<span class="cm"># یا با uv (سریع‌تر)</span>
+uv pip install badking
+
+<span class="cm"># یا آخرین نسخه توسعه</span>
+pip install git+https://github.com/badking-daniyal/badking.git</code></pre>
+  <div class="note">
+    <b>بدون توکن هم تست می‌شود:</b> <code>python examples/echo_bot.py --mock</code> — ربات را در حالت شبیه‌سازی اجرا می‌کند، بدون نیاز به @botfather.
+  </div>
+</section>
+
+<section id="quickstart">
+  <h2>شروع در ۵ دقیقه</h2>
+  <p class="sub">توکن را از @botfather در بله بگیر. بدون لاگین شماره، بدون session file.</p>
+<pre><code><span class="kw">import</span> asyncio
+<span class="kw">from</span> badking <span class="kw">import</span> Bot, Dispatcher, F
+
+bot = Bot(<span class="st">"123456789:TOKEN_FROM_BOTFATHER"</span>)
+dp = Dispatcher()
+
+<span class="kw">@</span>dp.message(F.text == <span class="st">"/start"</span>)
+<span class="kw">async def</span> <span class="fn">start</span>(message, bot):
+    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"خوش آمدی! 🚀"</span>)
+
+<span class="kw">@</span>dp.message(F.text)
+<span class="kw">async def</span> <span class="fn">echo</span>(message, bot):
+    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">f"شما گفتید: {message.text}"</span>)
+
+asyncio.run(bot.polling(dp))</code></pre>
+  <p>همین. پارامتر <code>bot</code> خودکار تزریق می‌شود — لازم نیست دستی پاس بدهی.</p>
+</section>
+
+<section id="examples">
+  <h2>نمونه‌های واقعی</h2>
+  <p class="sub">هر نمونه کد کامل و قابل اجراست، نه شبه‌کد.</p>
+
+  <h3 id="conversation">۱. ویزارد چندمرحله‌ای</h3>
+  <p>پرسش‌وپاسخ خطی بدون دست‌وپنجه نرم کردن با FSM:</p>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> Bot, Dispatcher, F, ConversationManager
+
+bot = Bot(<span class="st">"TOKEN"</span>)
+dp = Dispatcher()
+convos = ConversationManager()
+dp.register_middleware(convos)
+
+<span class="kw">@</span>dp.message(F.text == <span class="st">"/register"</span>)
+<span class="kw">async def</span> <span class="fn">register</span>(message, bot):
+    <span class="kw">async with</span> convos.conversation(bot, message.chat.id) <span class="kw">as</span> conv:
+        <span class="kw">await</span> conv.send(<span class="st">"اسم کاملت چیه؟"</span>)
+        name = <span class="kw">await</span> conv.get_response(timeout=<span class="nm">60</span>)
+
+        <span class="kw">await</span> conv.send(<span class="st">"شماره تماس؟"</span>)
+        phone = <span class="kw">await</span> conv.get_response(timeout=<span class="nm">60</span>)
+
+        <span class="kw">await</span> conv.send(<span class="st">f"ثبت شد ✅\nنام: {name.text}\nتلفن: {phone.text}"</span>)</code></pre>
+  <p>اگر کاربر جواب ندهد <code>ConversationTimeout</code> می‌گیری. اگر چت دیگری پیام بدهد، مزاحم مکالمه نمی‌شود.</p>
+
+  <h3 id="pagination">۲. منوی چندصفحه‌ای</h3>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> KeyboardPaginator, F
+
+products = [<span class="st">"کتاب پایتون"</span>, <span class="st">"هدفون"</span>, <span class="st">"ماوس"</span>, <span class="st">"کیبورد"</span>, <span class="st">"مانیتور"</span>]
+paginator = KeyboardPaginator(products, per_page=<span class="nm">3</span>, prefix=<span class="st">"shop"</span>)
+
+<span class="kw">@</span>dp.message(F.text == <span class="st">"/shop"</span>)
+<span class="kw">async def</span> <span class="fn">shop</span>(message, bot):
+    <span class="kw">await</span> bot.send_message(
+        message.chat.id, <span class="st">"محصولی انتخاب کن:"</span>,
+        reply_markup=paginator.markup(page=<span class="nm">0</span>).model_dump(exclude_none=<span class="kw">True</span>),
+    )
+
+<span class="kw">@</span>dp.callback_query(F.data.startswith(<span class="st">"shop:"</span>))
+<span class="kw">async def</span> <span class="fn">on_shop</span>(cq, bot):
+    parsed = paginator.parse(cq.data)
+    <span class="kw">if not</span> parsed:
+        <span class="kw">return</span>
+    kind, value = parsed
+    <span class="kw">if</span> kind == <span class="st">"page"</span>:
+        <span class="kw">await</span> bot.edit_message_text(
+            cq.message.chat.id, cq.message.message_id, <span class="st">"محصولی انتخاب کن:"</span>,
+            reply_markup=paginator.markup(page=value).model_dump(exclude_none=<span class="kw">True</span>),
+        )
+    <span class="kw">elif</span> kind == <span class="st">"item"</span>:
+        <span class="kw">await</span> bot.answer_callback_query(cq.id, <span class="st">f"انتخاب شد: {products[value]}"</span>)</code></pre>
+  <p>دکمه‌های «قبلی / بعدی» و شماره صفحه خودکار ساخته می‌شوند.</p>
+
+  <h3 id="fsm">۳. FSM پایدار با SQLite</h3>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> Bot, Dispatcher, F, State, StatesGroup, SQLiteStorage
+
+<span class="kw">class</span> <span class="fn">Order</span>(StatesGroup):
+    item = State()
+    address = State()
+
+dp = Dispatcher(storage=SQLiteStorage(<span class="st">"orders.db"</span>))
+bot = Bot(<span class="st">"TOKEN"</span>)
+
+<span class="kw">@</span>dp.message(F.text == <span class="st">"/order"</span>)
+<span class="kw">async def</span> <span class="fn">start_order</span>(message, state):
+    <span class="kw">await</span> state.set_state(Order.item)
+    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"چه چیزی می‌خواهی؟"</span>)
+
+<span class="kw">@</span>dp.message(Order.item)
+<span class="kw">async def</span> <span class="fn">get_item</span>(message, state):
+    <span class="kw">await</span> state.update_data(item=message.text)
+    <span class="kw">await</span> state.set_state(Order.address)
+    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"آدرس تحویل؟"</span>)
+
+<span class="kw">@</span>dp.message(Order.address)
+<span class="kw">async def</span> <span class="fn">get_address</span>(message, state):
+    data = <span class="kw">await</span> state.get_data()
+    <span class="kw">await</span> state.clear()
+    <span class="kw">await</span> bot.send_message(
+        message.chat.id,
+        <span class="st">f"سفارش ثبت شد ✅\nکالا: {data['item']}\nآدرس: {message.text}"</span>,
+    )</code></pre>
+  <p>ربات را ری‌استارت کن — state سر جایش است.</p>
+
+  <h3 id="ai">۴. دستیار هوشمند با ابزار</h3>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> AIAssistant, OpenAICompatibleLLM
+
+llm = OpenAICompatibleLLM(
+    base_url=<span class="st">"https://api.openai.com/v1"</span>,
+    api_key=<span class="st">"sk-..."</span>,
+    model=<span class="st">"gpt-4o-mini"</span>,
+)
+
+assistant = AIAssistant(
+    llm,
+    persona=<span class="st">"دستیار فروشگاه، مودب و کوتاه جواب بده"</span>,
+    tools=[check_order_status, get_price],
+)
+
+answer = <span class="kw">await</span> assistant.reply(user_key=<span class="fn">str</span>(message.from_user.id), text=message.text)
+<span class="kw">await</span> bot.send_message(message.chat.id, answer)</code></pre>
+  <p>مدل خودش تصمیم می‌گیرد کدام ابزار را صدا بزند. اگر ابزار خطا بدهد، کل مکالمه نمی‌شکند.</p>
+
+  <h3 id="rag">۵. RAG روی مستندات خودت</h3>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> SimpleRAG, AIAssistant, OpenAICompatibleLLM
+
+rag = SimpleRAG()
+rag.add_text(<span class="fn">open</span>(<span class="st">"faq.txt"</span>, encoding=<span class="st">"utf-8"</span>).read(), source=<span class="st">"faq"</span>)
+rag.add_text(<span class="fn">open</span>(<span class="st">"policies.txt"</span>, encoding=<span class="st">"utf-8"</span>).read(), source=<span class="st">"policies"</span>)
+
+assistant = AIAssistant(OpenAICompatibleLLM(...), rag=rag)</code></pre>
+  <p>ربات از محتوای فایل‌های تو جواب می‌دهد، نه از خودش.</p>
+
+  <h3 id="connector">۶. اتصال به هر سرویس خارجی</h3>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> Connector, Auth
+
+zarinpal = Connector(
+    base_url=<span class="st">"https://api.zarinpal.com"</span>,
+    auth=Auth(type=<span class="st">"bearer"</span>, token=<span class="st">"..."</span>),
+    retries=<span class="nm">3</span>,
+)
+
+result = <span class="kw">await</span> zarinpal.post(<span class="st">"/pg/v4/payment/request.json"</span>, json_body={
+    <span class="st">"merchant_id"</span>: <span class="st">"...."</span>,
+    <span class="st">"amount"</span>: <span class="nm">50000</span>,
+    <span class="st">"callback_url"</span>: <span class="st">"https://example.com/callback"</span>,
+})</code></pre>
+  <p>Retry خودکار روی 5xx و 429، با احترام به <code>Retry-After</code>.</p>
+
+  <h3 id="payment">۷. پرداخت داخل بله</h3>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> PaymentToolkit
+
+pay = PaymentToolkit(bot)
+
+<span class="kw">await</span> pay.send_invoice(
+    chat_id=message.chat.id,
+    title=<span class="st">"کتاب پایتون"</span>,
+    description=<span class="st">"نسخه چاپی، ارسال رایگان"</span>,
+    payload=<span class="st">"order-1234"</span>,
+    provider_token=<span class="st">"..."</span>,
+    prices=[{<span class="st">"label"</span>: <span class="st">"کتاب"</span>, <span class="st">"amount"</span>: <span class="nm">500000</span>}],
+)</code></pre>
+
+  <h3 id="miniapp">۸. مینی‌اپ با اعتبارسنجی امن</h3>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> validate_init_data
+
+<span class="cm"># در سرور مینی‌اپ، initData را از کلاینت بگیر</span>
+data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123456:ABC..."</span>)
+<span class="fn">print</span>(data.user.id, data.user.first_name)   <span class="cm"># امضا تأیید شد</span></code></pre>
+  <p>الگوریتم دقیقاً مطابق مستندات رسمی بله: فیلدها الفبایی مرتب، با <code>\n</code> متصل، HMAC-SHA256.</p>
+</section>
+
+<section id="layers">
+  <h2>سه لایه دسترسی</h2>
+  <p class="sub">هر لایه برای یک مخاطب. لایه پایین‌تر همیشه باز است.</p>
+  <table>
+    <thead><tr><th>لایه</th><th>مخاطب</th><th>ابزار</th></tr></thead>
+    <tbody>
+      <tr><td><b>۰ — بدون کد</b></td><td>صاحب کسب‌وکار</td><td>Flow Builder، CLI، dry-run</td></tr>
+      <tr><td><b>۱ — پایتون</b></td><td>برنامه‌نویس</td><td>Dispatcher، FSM، Filter، AI، Connector، Conversation</td></tr>
+      <tr><td><b>۲ — خام</b></td><td>مهندس</td><td><code>bot.request("anyMethod", {...})</code> — هر متد، هر JSON</td></tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <b>قانون:</b> هر کاری لایه ۱ می‌کند، لایه ۲ هم می‌کند. چیزی پنهان نیست.
+  </div>
+</section>
+
+<section id="nocode">
+  <h2>ربات بدون نوشتن کد</h2>
+  <p class="sub">برای کسی که پایتون نمی‌داند ولی ربات می‌خواهد.</p>
+<pre><code>badking new mybot       <span class="cm"># ساخت پروژه کامل</span>
+badking dry-run         <span class="cm"># تست جریان بدون توکن</span>
+badking codegen         <span class="cm"># تبدیل flow.json به کد پایتون</span>
+badking setup           <span class="cm"># تنظیم توکن</span>
+badking run             <span class="cm"># اجرا</span></code></pre>
+  <p><code>flow.json</code> را با Notepad ویرایش کن:</p>
+<pre><code>{
+  <span class="st">"start"</span>: <span class="st">"welcome"</span>,
+  <span class="st">"steps"</span>: {
+    <span class="st">"welcome"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"سلام! 👋"</span>, <span class="st">"next"</span>: <span class="st">"ask_name"</span>},
+    <span class="st">"ask_name"</span>: {<span class="st">"type"</span>: <span class="st">"ask"</span>, <span class="st">"text"</span>: <span class="st">"اسمت چیه؟"</span>, <span class="st">"save"</span>: <span class="st">"name"</span>, <span class="st">"next"</span>: <span class="st">"done"</span>},
+    <span class="st">"done"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"خوش آمدی {name}!"</span>}
+  }
+}</code></pre>
+  <p>بدون یک خط پایتون، یک ربات مکالمه‌ای داری. وقتی بزرگ شد، <code>badking codegen</code> همان جریان را به کد تبدیل می‌کند.</p>
+</section>
+
+<section id="compare">
+  <h2>مقایسه با aiobale</h2>
+  <p class="sub">صادقانه، بدون اغراق.</p>
+  <table>
+    <thead><tr><th>قابلیت</th><th>aiobale</th><th>BADKING</th></tr></thead>
+    <tbody>
+      <tr><td>توکن رسمی @botfather</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>Self-bot / Internal API</td><td class="yes">✓</td><td class="yes">✓ ایزوله، پیش‌فرض خاموش</td></tr>
+      <tr><td>FSM + SQLite</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Conversation (ویزارد)</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>KeyboardPaginator</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Magic Filter F</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Middleware + Rate Limit</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Webhook Server</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>MiniApp + HMAC</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>سفیر (OTP، قالب)</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>پرداخت فاکتور رسمی</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>Business API</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>AI: Tool Calling + RAG</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>بدون‌کد (Flow Builder)</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>Connector به هر API</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>Observability (Prometheus)</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>Docker + CI آماده</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>مستندات فارسی</td><td class="no">✗</td><td class="yes">✓</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="structure">
+  <h2>ساختار پروژه</h2>
+  <p class="sub">۷۶ ماژول، هر کدام یک مسئولیت.</p>
+<pre><code>badking/
+├── core/           Bot، Dispatcher، Router، خطاها
+├── types/          مدل‌های Pydantic
+├── filters/        Magic Filter F
+├── fsm/            State، StatesGroup، FSMContext
+├── storage/        Memory، SQLite
+├── conversation/   ویزارد پرسش‌وپاسخ
+├── keyboards/      KeyboardPaginator
+├── miniapp/        اعتبارسنجی HMAC initData
+├── safir/          سرویس سفیر (OTP، قالب)
+├── payments/       فاکتور و پرداخت
+├── business/       Business API
+├── ai/             LLM، حافظه، RAG، دستیار
+├── flows/          Flow Builder بدون کد
+├── connectors/     HTTP به هر سرویس
+├── jobs/           Scheduler، JobQueue
+├── events/         Event Bus
+├── orm/            Store
+├── media/          Voice، OCR
+├── observability/  Metrics، لاگ JSON
+├── security/       AntiSpam، AuditLog، RBAC، Secrets
+├── testing/        DryBot، Health
+├── middleware/     logging، metrics، antispam
+├── ratelimit/      Rate Limiter با اولویت
+├── recovery/       Offset Store اتمیک
+├── adapters/       Multi-platform
+├── compat/         سازگاری aiogram/PTB
+└── hybrid/         Self-bot (ایزوله، پیش‌فرض خاموش)</code></pre>
+</section>
+
+<section id="limits">
+  <h2>مرز صادقانه</h2>
+  <p class="sub">این‌ها را باید بدانی، نه اینکه بعداً کشف کنی.</p>
+
+  <div class="note warn">
+    <b>هر کاری API رسمی بله ندهد، با توکن رسمی از هیچ کتابخانه‌ای برنمی‌آید.</b>
+    نه BADKING، نه aiobale، نه هیچ‌کس دیگر. این محدودیت بله است، نه کتابخانه.
+  </div>
+
+  <h3>تاریخچه پیام‌ها</h3>
+  <p>
+    <code>iter_messages</code> ما آپدیت‌های موجود را می‌پیماید. تاریخچه کامل و قدیمی‌تر از ۲۴ ساعت با توکن رسمی ممکن نیست — برای آن لایه hybrid لازم است.
+  </p>
+
+  <h3>ریسک self-bot</h3>
+  <p>
+    لایه <code>hybrid</code> پیش‌فرض خاموش است و بدون <code>ack_risk=True</code> فعال نمی‌شود. دلیلش: Internal API غیررسمی است، می‌شکند، و می‌تواند اکانت شخصی‌ات را ببندد.
+  </p>
+
+  <h3>اعداد تأییدنشده</h3>
+  <p>
+    اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت» در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از <code>retry_after</code> واقعی سرور یاد می‌گیرند.
+  </p>
+
+  <h3>RPC داخلی self-bot</h3>
+  <p>
+    پیاده‌سازی کامل ۸۰+ متد RPC داخلی هنوز انجام نشده. رابط و ایزولاسیون آماده است؛ خود RPC به‌عنوان پلاگین جداگانه منتشر می‌شود.
+  </p>
+</section>
+
+<section id="more">
+  <h2>بیشتر</h2>
+  <div class="grid">
+    <div class="card">
+      <h4>مستندات بله</h4>
+      <p>خلاصه مستندات رسمی API بله، با نکات عملی.</p>
+    </div>
+    <div class="card">
+      <h4>نقشه راه</h4>
+      <p>وضعیت فازها و آنچه در نسخه‌های بعدی می‌آید.</p>
+    </div>
+    <div class="card">
+      <h4>هشدار self-bot</h4>
+      <p>چرا لایه hybrid ایزوله است و چه ریسکی دارد.</p>
+    </div>
+    <div class="card">
+      <h4>شروع سریع</h4>
+      <p>راهنمای قدم‌به‌قدم فارسی برای اولین ربات.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  BADKING — MIT License · <a href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">GitHub</a> · badking.ir
+</footer>
+
+<script>
+// تم
+const root = document.documentElement;
+const btn = document.getElementById('theme');
+const saved = localStorage.getItem('bk-theme');
+if (saved) root.setAttribute('data-theme', saved);
+btn.addEventListener('click', () => {
+  const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  root.setAttribute('data-theme', next);
+  localStorage.setItem('bk-theme', next);
+});
+
+// هایلایت سایدبار با اسکرول
+const links = [...document.querySelectorAll('aside a')];
+const sections = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-84px 0px -70% 0px' });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
