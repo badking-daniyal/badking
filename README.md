@@ -300,7 +300,7 @@ badking run             # اجرا
 | قابلیت | aiobale | BADKING |
 |---|---|---|
 | توکن رسمی @botfather | ❌ (لاگین شماره) | ✅ |
-| Self-bot / Internal API | ✅ | ✅ (پلاگین ایزوله، پیش‌فرض خاموش) |
+| Self-bot / Internal API | ✅ کامل | ⚠️ فقط چارچوب (بدون transport) |
 | FSM + SQLite | ✅ | ✅ |
 | Conversation (ویزارد) | ✅ | ✅ |
 | KeyboardPaginator | ✅ | ✅ |
