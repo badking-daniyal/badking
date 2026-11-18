@@ -1,0 +1,8 @@
+{
+  "start": "welcome",
+  "steps": {
+    "welcome": {"type": "message", "text": "سلام! به ربات من خوش آمدید.", "next": "ask_name"},
+    "ask_name": {"type": "ask", "text": "نامت چیه؟", "save": "name", "next": "done"},
+    "done": {"type": "message", "text": "خوش آمدی {name}!"}
+  }
+}

@@ -1,0 +1,42 @@
+# توکنها و اسرار — هرگز وارد مخزن نشوند
+.env
+.env.*
+*.env
+mybot/.env
+
+# بایتکد و کش پایتون
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# محیط مجازی
+venv/
+.venv/
+env/
+ENV/
+
+# بستهبندی
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# فایلهای آپدیت/داده محلی
+*.db
+*.sqlite
+*.sqlite3
+badking_offset.json
+
+# خروجی رباتهای تستشده
+mybot/generated_bot.py
+
+# IDE و سیستم
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
