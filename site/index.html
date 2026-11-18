@@ -4,191 +4,464 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BADKING — فریمورک ربات بله</title>
-<meta name="description" content="فریمورک همه کاره، async و AI-Native برای ساخت ربات‌های بله. بدون محدودیت، سه لایه دسترسی، AI از روز اول.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
+<meta name="description" content="فریمورک همه کاره، async و AI-Native برای ساخت ربات‌های بله. سه لایه دسترسی، AI از روز اول، بدون محدودیت.">
+<meta name="theme-color" content="#07070a">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2307070a'/><text x='50' y='72' font-size='58' text-anchor='middle' fill='%23ff8a3d' font-family='sans-serif' font-weight='bold'>B</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
 <style>
 :root{
-  --bg:#0a0a0c; --panel:#121216; --panel2:#17171d; --line:#26262f;
-  --fg:#e8e8ee; --muted:#9595a8; --accent:#ff8a3d; --accent2:#ffb877;
-  --code:#0d0d11; --green:#4ade80; --red:#f87171;
+  --bg:#07070a; --bg2:#0b0b10; --panel:#0f0f15; --panel2:#14141c;
+  --line:#1e1e2a; --line2:#2a2a3a;
+  --fg:#ececf2; --muted:#8e8ea6; --dim:#5c5c72;
+  --accent:#ff8a3d; --accent2:#ffb877; --accent3:#ff5e1a;
+  --glow:255,138,61;
+  --green:#3ddc84; --red:#ff5c5c; --blue:#5b9dff; --purple:#b47cff;
+  --code:#08080c;
+  --mono:"JetBrains Mono","Cascadia Code",Consolas,ui-monospace,monospace;
 }
 [data-theme="light"]{
-  --bg:#fbfbfd; --panel:#fff; --panel2:#f4f4f8; --line:#e2e2ea;
-  --fg:#14141a; --muted:#5c5c70; --accent:#d9660f; --accent2:#b8500a;
-  --code:#f6f6fa; --green:#15803d; --red:#b91c1c;
+  --bg:#fcfcfe; --bg2:#f6f6fa; --panel:#fff; --panel2:#f2f2f8;
+  --line:#e4e4ee; --line2:#d4d4e2;
+  --fg:#0e0e16; --muted:#5a5a72; --dim:#8a8aa0;
+  --accent:#e06400; --accent2:#b85000; --accent3:#c25000;
+  --glow:224,100,0;
+  --green:#0d9f52; --red:#d92d2d; --blue:#2563eb; --purple:#7c3aed;
+  --code:#f7f7fb;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{
   background:var(--bg); color:var(--fg);
   font-family:"Vazirmatn","Segoe UI",Tahoma,system-ui,sans-serif;
-  line-height:1.85; font-size:16px;
-  -webkit-font-smoothing:antialiased;
+  line-height:1.9; font-size:16px; overflow-x:hidden;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
 }
-.wrap{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;gap:40px}
-/* header */
+::selection{background:rgba(var(--glow),.3);color:var(--fg)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+/* ---------- ambient background ---------- */
+.ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.4;will-change:transform}
+.orb.a{width:620px;height:620px;background:radial-gradient(circle,#ff5e1a,transparent 68%);top:-180px;right:-120px;animation:drift1 22s ease-in-out infinite}
+.orb.b{width:520px;height:520px;background:radial-gradient(circle,#7c3aed,transparent 68%);top:34%;left:-180px;animation:drift2 27s ease-in-out infinite}
+.orb.c{width:460px;height:460px;background:radial-gradient(circle,#0ea5e9,transparent 70%);bottom:-140px;right:22%;animation:drift3 31s ease-in-out infinite}
+[data-theme="light"] .orb{opacity:.16}
+@keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-70px,90px) scale(1.14)}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(80px,-70px) scale(1.1)}}
+@keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-60px,-80px) scale(1.16)}}
+.grid-bg{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,#000 30%,transparent 78%);
+  -webkit-mask-image:radial-gradient(ellipse 90% 60% at 50% 0%,#000 30%,transparent 78%);
+}
+[data-theme="light"] .grid-bg{background-image:linear-gradient(rgba(0,0,0,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.04) 1px,transparent 1px)}
+.spotlight{
+  position:fixed;width:640px;height:640px;border-radius:50%;z-index:1;
+  pointer-events:none;opacity:0;transition:opacity .4s;
+  background:radial-gradient(circle,rgba(var(--glow),.10),transparent 62%);
+  transform:translate(-50%,-50%);
+}
+body:hover .spotlight{opacity:1}
+
+/* ---------- progress ---------- */
+.progress{position:fixed;top:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent3),var(--accent2));z-index:200;width:0;box-shadow:0 0 12px rgba(var(--glow),.9)}
+
+/* ---------- header ---------- */
 header{
-  position:sticky;top:0;z-index:50;background:rgba(10,10,12,.88);
-  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:100;
+  background:rgba(7,7,10,.72);backdrop-filter:blur(20px) saturate(160%);
+  border-bottom:1px solid var(--line);
 }
-[data-theme="light"] header{background:rgba(251,251,253,.9)}
-.hbar{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:18px}
-.logo{font-size:19px;font-weight:800;letter-spacing:.5px;display:flex;align-items:center;gap:8px;direction:ltr}
-.logo span{color:var(--accent)}
-.hbar nav{margin-inline-start:auto;display:flex;gap:22px;align-items:center;font-size:14.5px}
-.hbar nav a{color:var(--muted);text-decoration:none;transition:color .15s}
-.hbar nav a:hover{color:var(--accent)}
+[data-theme="light"] header{background:rgba(252,252,254,.78)}
+.hbar{max-width:1240px;margin:0 auto;padding:13px 26px;display:flex;align-items:center;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;direction:ltr}
+.mark{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--accent3),var(--accent2));
+  color:#0a0a0c;font-weight:900;font-size:19px;
+  box-shadow:0 0 22px rgba(var(--glow),.5),inset 0 1px 0 rgba(255,255,255,.35);
+  font-family:var(--mono);
+}
+.brand b{font-size:17.5px;font-weight:800;letter-spacing:.6px}
+.brand b i{color:var(--accent);font-style:normal}
+.hbar nav{margin-inline-start:auto;display:flex;gap:4px;align-items:center;font-size:14px}
+.hbar nav a{
+  color:var(--muted);text-decoration:none;padding:7px 13px;border-radius:8px;
+  transition:.16s;font-weight:500;white-space:nowrap;
+}
+.hbar nav a:hover{color:var(--fg);background:var(--panel2)}
+.hbar nav a.gh{
+  border:1px solid var(--line2);color:var(--fg);margin-inline-start:8px;
+  display:flex;align-items:center;gap:6px;
+}
+.hbar nav a.gh:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 0 16px rgba(var(--glow),.22)}
 .iconbtn{
-  background:var(--panel2);border:1px solid var(--line);color:var(--fg);
-  width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:15px;
-  display:grid;place-items:center;transition:.15s;
+  background:var(--panel2);border:1px solid var(--line2);color:var(--fg);
+  width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:14px;
+  display:grid;place-items:center;transition:.16s;flex:0 0 auto;
 }
-.iconbtn:hover{border-color:var(--accent);color:var(--accent)}
-/* sidebar */
+.iconbtn:hover{border-color:var(--accent);color:var(--accent);transform:rotate(-14deg)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:0 26px;display:flex;gap:46px;position:relative;z-index:2}
 aside{
-  width:236px;flex:0 0 236px;position:sticky;top:76px;
-  align-self:flex-start;max-height:calc(100vh - 96px);overflow-y:auto;
-  padding:28px 0;font-size:14px;
+  width:224px;flex:0 0 224px;position:sticky;top:74px;align-self:flex-start;
+  max-height:calc(100vh - 96px);overflow-y:auto;padding:30px 0 40px;font-size:13.5px;
 }
-aside::-webkit-scrollbar{width:5px}
-aside::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+aside::-webkit-scrollbar{width:4px}
 aside h4{
-  font-size:11px;text-transform:uppercase;letter-spacing:1.4px;
-  color:var(--muted);margin:20px 0 8px;font-weight:700;
+  font-size:10.5px;text-transform:uppercase;letter-spacing:1.6px;
+  color:var(--dim);margin:22px 0 7px;font-weight:800;
 }
 aside h4:first-child{margin-top:0}
 aside a{
   display:block;color:var(--muted);text-decoration:none;
-  padding:5px 10px;border-radius:7px;border-inline-start:2px solid transparent;
-  transition:.13s;
+  padding:5px 11px;border-radius:7px;border-inline-start:2px solid transparent;
+  transition:.14s;position:relative;
 }
 aside a:hover{color:var(--fg);background:var(--panel2)}
-aside a.active{color:var(--accent);border-inline-start-color:var(--accent);background:var(--panel2)}
-main{flex:1;min-width:0;padding:44px 0 120px}
-/* hero */
-.hero{padding:52px 0 56px;border-bottom:1px solid var(--line);margin-bottom:52px}
-.badge{
-  display:inline-block;background:var(--panel2);border:1px solid var(--line);
-  color:var(--accent);font-size:12.5px;padding:5px 13px;border-radius:20px;
-  margin-bottom:20px;font-weight:600;
+aside a.active{
+  color:var(--accent);border-inline-start-color:var(--accent);
+  background:linear-gradient(90deg,rgba(var(--glow),.10),transparent);
+  font-weight:600;
 }
-.hero h1{font-size:47px;line-height:1.2;font-weight:800;letter-spacing:-1px;margin-bottom:18px}
-.hero h1 em{color:var(--accent);font-style:normal}
-.hero p.lead{font-size:18.5px;color:var(--muted);max-width:660px;margin-bottom:30px}
-.cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:34px}
+main{flex:1;min-width:0;padding:0 0 130px}
+
+/* ---------- hero ---------- */
+.hero{position:relative;padding:74px 0 66px;border-bottom:1px solid var(--line);margin-bottom:64px}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+.hero-copy{min-width:0}
+.pill{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(var(--glow),.09);border:1px solid rgba(var(--glow),.3);
+  color:var(--accent2);font-size:12.5px;padding:6px 15px;border-radius:30px;
+  margin-bottom:26px;font-weight:600;
+}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 9px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+.hero h1{
+  font-size:clamp(34px,4.4vw,56px);line-height:1.16;font-weight:900;
+  letter-spacing:-1.4px;margin-bottom:20px;
+}
+.grad{
+  background:linear-gradient(100deg,var(--accent3),var(--accent2) 45%,#ffd9a8 70%,var(--accent));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  background-size:200% auto;animation:shine 5s linear infinite;
+}
+@keyframes shine{to{background-position:200% center}}
+.hero .lead{font-size:clamp(16px,1.6vw,19px);color:var(--muted);max-width:640px;margin-bottom:32px}
+.hero .lead b{color:var(--fg);font-weight:700}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:40px}
 .btn{
-  display:inline-flex;align-items:center;gap:8px;padding:12px 24px;
-  border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;
-  transition:.16s;border:1px solid transparent;
+  display:inline-flex;align-items:center;gap:9px;padding:13px 26px;
+  border-radius:11px;text-decoration:none;font-weight:700;font-size:15px;
+  transition:.18s;border:1px solid transparent;cursor:pointer;font-family:inherit;
 }
-.btn.primary{background:var(--accent);color:#0a0a0c}
-.btn.primary:hover{background:var(--accent2);transform:translateY(-1px)}
-.btn.ghost{background:transparent;border-color:var(--line);color:var(--fg)}
-.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
-.stats{display:flex;gap:34px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
-.stats b{display:block;color:var(--fg);font-size:23px;font-weight:800;line-height:1.3}
-/* sections */
-section{margin-bottom:60px;scroll-margin-top:84px}
-section h2{
-  font-size:29px;font-weight:800;margin-bottom:8px;letter-spacing:-.4px;
-  display:flex;align-items:center;gap:11px;
+.btn.primary{
+  background:linear-gradient(135deg,var(--accent3),var(--accent2));color:#0a0a0c;
+  box-shadow:0 6px 26px rgba(var(--glow),.36),inset 0 1px 0 rgba(255,255,255,.4);
 }
-section h2::before{
-  content:"";width:4px;height:26px;background:var(--accent);border-radius:2px;
+.btn.primary:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(var(--glow),.52)}
+.btn.ghost{background:var(--panel);border-color:var(--line2);color:var(--fg)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
+
+/* terminal */
+.term{
+  background:var(--code);border:1px solid var(--line2);border-radius:13px;
+  overflow:hidden;width:100%;
+  box-shadow:0 22px 60px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.02) inset;
 }
-section > p.sub{color:var(--muted);margin-bottom:24px;font-size:15.5px}
-h3{font-size:19px;font-weight:700;margin:30px 0 12px}
+[data-theme="light"] .term{box-shadow:0 18px 44px rgba(0,0,0,.10)}
+.term-bar{
+  display:flex;align-items:center;gap:7px;padding:11px 15px;
+  background:var(--panel2);border-bottom:1px solid var(--line);
+}
+.tdot{width:10px;height:10px;border-radius:50%}
+.tdot.r{background:#ff5f57}.tdot.y{background:#febc2e}.tdot.g{background:#28c840}
+.term-title{margin-inline-start:8px;font-family:var(--mono);font-size:11.5px;color:var(--dim);direction:ltr}
+.term-body{padding:16px 18px;font-family:var(--mono);font-size:13px;line-height:1.95;direction:ltr;text-align:left;min-height:132px}
+.term-body .ln{display:block;white-space:pre-wrap;word-break:break-word}
+.term-body .p{color:var(--accent)}
+.term-body .o{color:var(--green)}
+.term-body .c{color:var(--muted)}
+.cursor{display:inline-block;width:7px;height:15px;background:var(--accent);vertical-align:-2px;animation:blink 1.05s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* stats */
+.stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:44px}
+.stat{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:15px 22px;min-width:104px;transition:.2s;position:relative;overflow:hidden;
+}
+.stat::after{
+  content:"";position:absolute;inset:0;border-radius:12px;padding:1px;
+  background:linear-gradient(140deg,rgba(var(--glow),.5),transparent 55%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:.2s;
+}
+.stat:hover::after{opacity:1}
+.stat:hover{transform:translateY(-3px)}
+.stat b{display:block;font-size:26px;font-weight:900;line-height:1.25;font-family:var(--mono);color:var(--accent)}
+.stat span{font-size:12px;color:var(--muted);font-weight:500}
+
+/* ---------- sections ---------- */
+section{margin-bottom:76px;scroll-margin-top:86px}
+.sec-head{margin-bottom:30px}
+.eyebrow{
+  font-family:var(--mono);font-size:11.5px;color:var(--accent);
+  letter-spacing:2.4px;text-transform:uppercase;font-weight:700;margin-bottom:9px;
+  display:flex;align-items:center;gap:9px;
+}
+.eyebrow::before{content:"";width:22px;height:1.5px;background:var(--accent);border-radius:2px}
+section h2{font-size:clamp(24px,3vw,33px);font-weight:900;letter-spacing:-.7px;line-height:1.3}
+section > p.sub{color:var(--muted);margin-bottom:26px;font-size:15.5px;max-width:660px}
+h3{font-size:18.5px;font-weight:800;margin:34px 0 12px;display:flex;align-items:center;gap:9px}
+h3 .num{
+  font-family:var(--mono);font-size:12px;color:var(--accent);
+  background:rgba(var(--glow),.1);border:1px solid rgba(var(--glow),.26);
+  width:25px;height:25px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;
+}
 p{margin-bottom:14px}
-a.inline{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
-a.inline:hover{border-bottom-color:var(--accent)}
-/* code */
-pre{
-  background:var(--code);border:1px solid var(--line);border-radius:11px;
-  padding:18px 20px;overflow-x:auto;margin:14px 0 20px;
-  direction:ltr;text-align:left;font-size:13.5px;line-height:1.75;
+a.inl{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(var(--glow),.35)}
+a.inl:hover{border-bottom-color:var(--accent)}
+
+/* ---------- bento features ---------- */
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin:24px 0}
+.bcard{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:22px;transition:.22s;position:relative;overflow:hidden;
 }
-code{font-family:"JetBrains Mono","Cascadia Code",Consolas,monospace}
+.bcard::before{
+  content:"";position:absolute;width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(var(--glow),.16),transparent 68%);
+  top:-100px;left:-60px;opacity:0;transition:.3s;
+}
+.bcard:hover::before{opacity:1}
+.bcard:hover{border-color:rgba(var(--glow),.42);transform:translateY(-3px);box-shadow:0 14px 40px rgba(0,0,0,.32)}
+[data-theme="light"] .bcard:hover{box-shadow:0 12px 30px rgba(0,0,0,.08)}
+.bcard.w3{grid-column:span 3}
+.bcard.w2{grid-column:span 2}
+.bcard.w4{grid-column:span 4}
+.bcard.w6{grid-column:span 6}
+.bico{
+  width:40px;height:40px;border-radius:11px;display:grid;place-items:center;
+  background:rgba(var(--glow),.11);border:1px solid rgba(var(--glow),.24);
+  margin-bottom:14px;font-size:19px;
+}
+.bcard h4{font-size:16px;font-weight:800;margin-bottom:7px;position:relative}
+.bcard p{font-size:13.5px;color:var(--muted);margin:0;position:relative;line-height:1.75}
+.bcard .tag{
+  display:inline-block;font-family:var(--mono);font-size:10.5px;color:var(--accent);
+  background:rgba(var(--glow),.09);border:1px solid rgba(var(--glow),.2);
+  padding:2px 8px;border-radius:5px;margin-top:11px;
+}
+
+/* ---------- code ---------- */
+.codebox{
+  background:var(--code);border:1px solid var(--line2);border-radius:13px;
+  overflow:hidden;margin:16px 0 22px;
+  box-shadow:0 16px 44px rgba(0,0,0,.34);
+}
+[data-theme="light"] .codebox{box-shadow:0 12px 30px rgba(0,0,0,.07)}
+.cb-head{
+  display:flex;align-items:center;gap:10px;padding:10px 15px;
+  background:var(--panel2);border-bottom:1px solid var(--line);
+}
+.cb-name{font-family:var(--mono);font-size:11.5px;color:var(--muted);direction:ltr}
+.copy{
+  margin-inline-start:auto;background:transparent;border:1px solid var(--line2);
+  color:var(--muted);font-size:11px;padding:4px 11px;border-radius:6px;
+  cursor:pointer;font-family:inherit;transition:.15s;
+}
+.copy:hover{border-color:var(--accent);color:var(--accent)}
+.copy.ok{border-color:var(--green);color:var(--green)}
+pre{padding:18px 20px;overflow-x:auto;direction:ltr;text-align:left;font-size:13.2px;line-height:1.8}
+code{font-family:var(--mono)}
 pre code{color:#c9d1d9}
 [data-theme="light"] pre code{color:#24292f}
-p code,li code,td code{
+p code,li code,td code,.note code{
   background:var(--panel2);border:1px solid var(--line);border-radius:5px;
-  padding:1.5px 6px;font-size:13px;color:var(--accent);
+  padding:1.5px 6px;font-size:12.6px;color:var(--accent);direction:ltr;
+  display:inline-block;font-family:var(--mono);
 }
-.kw{color:#ff7b72}.st{color:#a5d6ff}.cm{color:#8b949e}.fn{color:#d2a8ff}.nm{color:#79c0ff}
+.kw{color:#ff7b72}.st{color:#a5d6ff}.cm{color:#6e7681}.fn{color:#d2a8ff}.nm{color:#79c0ff}.at{color:#ffa657}
 [data-theme="light"] .kw{color:#cf222e}
 [data-theme="light"] .st{color:#0a3069}
 [data-theme="light"] .cm{color:#6e7781}
 [data-theme="light"] .fn{color:#8250df}
 [data-theme="light"] .nm{color:#0550ae}
-/* table */
-table{width:100%;border-collapse:collapse;margin:16px 0 22px;font-size:14.5px}
-th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line)}
-th{color:var(--muted);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.7px}
+[data-theme="light"] .at{color:#953800}
+
+/* ---------- table ---------- */
+.tbl-wrap{border:1px solid var(--line);border-radius:13px;overflow:hidden;margin:18px 0 24px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:12px 16px;text-align:right;border-bottom:1px solid var(--line)}
+th{
+  color:var(--dim);font-weight:800;font-size:11px;text-transform:uppercase;
+  letter-spacing:1.1px;background:var(--panel2);
+}
+tbody tr{transition:.13s}
 tbody tr:hover{background:var(--panel2)}
-.yes{color:var(--green);font-weight:700}
-.no{color:var(--red);font-weight:700}
-/* cards */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:16px;margin:20px 0}
-.card{
-  background:var(--panel);border:1px solid var(--line);border-radius:12px;
-  padding:20px;transition:.16s;
+tbody tr:last-child td{border-bottom:none}
+td:first-child{font-weight:600}
+.yes{color:var(--green);font-weight:800}
+.no{color:var(--red);font-weight:800;opacity:.75}
+.chk{display:inline-flex;align-items:center;gap:5px}
+
+/* ---------- layers ---------- */
+.layers{display:grid;gap:12px;margin:22px 0}
+.layer{
+  display:flex;align-items:center;gap:18px;padding:19px 22px;
+  background:var(--panel);border:1px solid var(--line);border-radius:13px;
+  transition:.2s;position:relative;overflow:hidden;
 }
-.card:hover{border-color:var(--accent);transform:translateY(-2px)}
-.card h4{font-size:16px;margin-bottom:7px;font-weight:700}
-.card p{font-size:14px;color:var(--muted);margin:0}
-/* callout */
+.layer:hover{border-color:rgba(var(--glow),.4);transform:translateX(-4px)}
+.layer .lv{
+  font-family:var(--mono);font-size:22px;font-weight:900;color:var(--accent);
+  width:52px;height:52px;border-radius:12px;display:grid;place-items:center;
+  background:rgba(var(--glow),.09);border:1px solid rgba(var(--glow),.24);flex:0 0 auto;
+}
+.layer .lt{flex:1;min-width:0}
+.layer .lt b{display:block;font-size:15.5px;font-weight:800;margin-bottom:3px}
+.layer .lt span{font-size:13px;color:var(--muted)}
+.layer .who{
+  font-size:11.5px;color:var(--accent);background:rgba(var(--glow),.09);
+  border:1px solid rgba(var(--glow),.2);padding:4px 11px;border-radius:20px;
+  white-space:nowrap;font-weight:600;
+}
+
+/* ---------- note ---------- */
 .note{
-  background:var(--panel);border:1px solid var(--line);
-  border-inline-start:3px solid var(--accent);border-radius:9px;
-  padding:15px 18px;margin:18px 0;font-size:14.5px;
+  background:linear-gradient(90deg,rgba(var(--glow),.07),transparent);
+  border:1px solid var(--line);border-inline-start:3px solid var(--accent);
+  border-radius:10px;padding:16px 19px;margin:18px 0;font-size:14.2px;
 }
-.note.warn{border-inline-start-color:var(--red)}
+.note.warn{
+  background:linear-gradient(90deg,rgba(255,92,92,.07),transparent);
+  border-inline-start-color:var(--red);
+}
 .note b{color:var(--accent)}
 .note.warn b{color:var(--red)}
-ul,ol{margin:12px 0 18px;padding-inline-start:24px}
-li{margin-bottom:8px}
-footer{
-  border-top:1px solid var(--line);padding:34px 0;color:var(--muted);
-  font-size:14px;text-align:center;
+ul,ol{margin:12px 0 18px;padding-inline-start:22px}
+li{margin-bottom:9px}
+li::marker{color:var(--accent)}
+
+/* ---------- tree ---------- */
+.tree{
+  background:var(--code);border:1px solid var(--line2);border-radius:13px;
+  padding:14px 10px;overflow-x:auto;
 }
-footer a{color:var(--accent);text-decoration:none}
-@media(max-width:900px){
+.trow{
+  display:grid;grid-template-columns:190px 1fr;gap:16px;align-items:baseline;
+  padding:7px 12px;border-radius:8px;transition:.13s;
+}
+.trow:hover{background:rgba(var(--glow),.06)}
+.trow .tp{
+  font-family:var(--mono);font-size:12.8px;direction:ltr;text-align:left;
+  color:var(--accent);font-weight:700;white-space:nowrap;
+}
+.trow .tp i{color:var(--dim);font-style:normal;font-weight:400}
+.trow .td{font-size:13.2px;color:var(--muted);line-height:1.7}
+@media(max-width:640px){
+  .trow{grid-template-columns:1fr;gap:2px}
+  .trow .tp{font-size:12.2px}
+  .trow .td{font-size:12.6px;padding-inline-start:14px}
+}
+
+/* ---------- footer ---------- */
+footer{
+  border-top:1px solid var(--line);padding:44px 0 34px;position:relative;z-index:2;
+  background:var(--bg2);
+}
+.fwrap{max-width:1240px;margin:0 auto;padding:0 26px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.fwrap .brand b{font-size:16px}
+.fwrap p{font-size:13px;color:var(--dim);margin:0}
+.fwrap .links{margin-inline-start:auto;display:flex;gap:20px;font-size:13.5px}
+.fwrap .links a{color:var(--muted);text-decoration:none;transition:.15s}
+.fwrap .links a:hover{color:var(--accent)}
+
+/* ---------- reveal ---------- */
+.rv{opacity:0;transform:translateY(22px);transition:opacity .65s cubic-bezier(.22,1,.36,1),transform .65s cubic-bezier(.22,1,.36,1)}
+.rv.in{opacity:1;transform:none}
+
+/* ---------- responsive ---------- */
+@media(max-width:1080px){
+  .bcard.w3,.bcard.w2,.bcard.w4{grid-column:span 3}
+  .bento{grid-template-columns:repeat(6,1fr)}
+}
+@media(max-width:920px){
   aside{display:none}
   .wrap{padding:0 18px}
-  .hero h1{font-size:33px}
-  .hero p.lead{font-size:16.5px}
   .hbar nav{display:none}
-  section h2{font-size:23px}
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px 12px}
-  .stats b{font-size:20px}
+  .hero{padding:48px 0 44px}
+  .hero-grid{grid-template-columns:1fr;gap:30px}
+  .bento{grid-template-columns:1fr}
+  .bcard.w3,.bcard.w2,.bcard.w4,.bcard.w6{grid-column:span 1}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .stat{padding:13px 15px;min-width:0}
+  .stat b{font-size:21px}
+  .layer{flex-wrap:wrap;gap:12px}
+  .layer .who{order:3}
+  .fwrap{flex-direction:column;align-items:flex-start;gap:14px}
+  .fwrap .links{margin-inline-start:0}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .rv{opacity:1;transform:none}
 }
 </style>
 </head>
 <body>
 
+<div class="progress" id="prog"></div>
+<div class="ambient">
+  <div class="orb a"></div>
+  <div class="orb b"></div>
+  <div class="orb c"></div>
+</div>
+<div class="grid-bg"></div>
+<div class="spotlight" id="spot"></div>
+
 <header>
   <div class="hbar">
-    <div class="logo">BAD<span>KING</span></div>
+    <a class="brand" href="#top">
+      <span class="mark">B</span>
+      <b>BAD<i>KING</i></b>
+    </a>
     <nav>
-      <a href="#install">نصب</a>
-      <a href="#quickstart">شروع سریع</a>
+      <a href="#features">قابلیت‌ها</a>
       <a href="#examples">نمونه‌ها</a>
+      <a href="#layers">لایه‌ها</a>
       <a href="#compare">مقایسه</a>
       <a href="#limits">مرزها</a>
-      <a href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">GitHub</a>
+      <a class="gh" href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
     </nav>
-    <button class="iconbtn" id="theme" title="تغییر تم">◐</button>
+    <button class="iconbtn" id="theme" title="تغییر تم" aria-label="تغییر تم">◐</button>
   </div>
 </header>
 
-<div class="wrap">
+<div class="wrap" id="top">
 <aside>
   <h4>شروع</h4>
   <a href="#intro">معرفی</a>
   <a href="#install">نصب</a>
-  <a href="#quickstart">شروع در ۵ دقیقه</a>
+  <a href="#quickstart">شروع سریع</a>
+  <h4>قابلیت‌ها</h4>
+  <a href="#features">همه قابلیت‌ها</a>
+  <a href="#layers">سه لایه دسترسی</a>
+  <a href="#nocode">بدون کد</a>
   <h4>نمونه‌ها</h4>
-  <a href="#examples">همه نمونه‌ها</a>
+  <a href="#examples">کدهای آماده</a>
   <a href="#conversation">ویزارد مکالمه</a>
   <a href="#pagination">منوی چندصفحه‌ای</a>
   <a href="#fsm">FSM پایدار</a>
@@ -198,8 +471,6 @@ footer a{color:var(--accent);text-decoration:none}
   <a href="#payment">پرداخت</a>
   <a href="#miniapp">مینی‌اپ</a>
   <h4>مرجع</h4>
-  <a href="#layers">سه لایه دسترسی</a>
-  <a href="#nocode">بدون کد</a>
   <a href="#compare">مقایسه با aiobale</a>
   <a href="#structure">ساختار پروژه</a>
   <a href="#limits">مرز صادقانه</a>
@@ -208,27 +479,45 @@ footer a{color:var(--accent);text-decoration:none}
 <main>
 
 <div class="hero" id="intro">
-  <div class="badge">نسخه ۰.۱.۰ — ۹۸ تست پاس‌شده</div>
-  <h1>ربات بله بساز.<br><em>بدون محدودیت.</em></h1>
+  <div class="hero-grid">
+  <div class="hero-copy">
+  <div class="pill"><span class="dot"></span> نسخه ۰.۱.۰ — ۹۸ تست پاس‌شده</div>
+  <h1>ربات بله بساز.<br><span class="grad">بدون محدودیت.</span></h1>
   <p class="lead">
-    فریمورک همه کاره، async و AI-Native برای بله. از کسی که کد بلد نیست تا مهندسی که به RPC خام نیاز دارد — سه لایه دسترسی، همه باز.
+    فریمورک همه کاره، async و <b>AI-Native</b> برای بله. از کسی که کد بلد نیست تا مهندسی که به RPC خام نیاز دارد — سه لایه دسترسی، همه باز.
   </p>
   <div class="cta">
-    <a class="btn primary" href="#install">شروع کن →</a>
+    <a class="btn primary" href="#install">شروع کن ←</a>
     <a class="btn ghost" href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">مشاهده در GitHub</a>
   </div>
+  </div>
+
+  <div class="term">
+    <div class="term-bar">
+      <span class="tdot r"></span><span class="tdot y"></span><span class="tdot g"></span>
+      <span class="term-title">bash — badking</span>
+    </div>
+    <div class="term-body" id="termBody"></div>
+  </div>
+  </div>
+
   <div class="stats">
-    <div><b>۹۸</b>تست پاس</div>
-    <div><b>۶۲</b>صادرات</div>
-    <div><b>۷۶</b>ماژول</div>
-    <div><b>۳</b>لایه دسترسی</div>
-    <div><b>MIT</b>مجوز</div>
+    <div class="stat"><b data-count="98">۰</b><span>تست پاس</span></div>
+    <div class="stat"><b data-count="62">۰</b><span>صادرات</span></div>
+    <div class="stat"><b data-count="76">۰</b><span>ماژول</span></div>
+    <div class="stat"><b data-count="3">۰</b><span>لایه دسترسی</span></div>
+    <div class="stat"><b>MIT</b><span>مجوز</span></div>
   </div>
 </div>
 
 <section id="install">
-  <h2>نصب</h2>
-  <p class="sub">Python 3.9 یا بالاتر. بدون وابستگی سنگین.</p>
+  <div class="sec-head rv">
+    <div class="eyebrow">Install</div>
+    <h2>نصب</h2>
+  </div>
+  <p class="sub rv">Python 3.9 یا بالاتر. بدون وابستگی سنگین، بدون session file.</p>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">terminal</span><button class="copy">کپی</button></div>
 <pre><code><span class="cm"># از PyPI</span>
 pip install badking
 
@@ -237,38 +526,179 @@ uv pip install badking
 
 <span class="cm"># یا آخرین نسخه توسعه</span>
 pip install git+https://github.com/badking-daniyal/badking.git</code></pre>
-  <div class="note">
+  </div>
+  <div class="note rv">
     <b>بدون توکن هم تست می‌شود:</b> <code>python examples/echo_bot.py --mock</code> — ربات را در حالت شبیه‌سازی اجرا می‌کند، بدون نیاز به @botfather.
   </div>
 </section>
 
 <section id="quickstart">
-  <h2>شروع در ۵ دقیقه</h2>
-  <p class="sub">توکن را از @botfather در بله بگیر. بدون لاگین شماره، بدون session file.</p>
+  <div class="sec-head rv">
+    <div class="eyebrow">Quickstart</div>
+    <h2>شروع در ۵ دقیقه</h2>
+  </div>
+  <p class="sub rv">توکن را از @botfather در بله بگیر. پارامتر <code>bot</code> خودکار تزریق می‌شود — لازم نیست دستی پاس بدهی.</p>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">echo_bot.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">import</span> asyncio
 <span class="kw">from</span> badking <span class="kw">import</span> Bot, Dispatcher, F
 
 bot = Bot(<span class="st">"123456789:TOKEN_FROM_BOTFATHER"</span>)
 dp = Dispatcher()
 
-<span class="kw">@</span>dp.message(F.text == <span class="st">"/start"</span>)
+<span class="at">@</span>dp.message(F.text == <span class="st">"/start"</span>)
 <span class="kw">async def</span> <span class="fn">start</span>(message, bot):
     <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"خوش آمدی! 🚀"</span>)
 
-<span class="kw">@</span>dp.message(F.text)
+<span class="at">@</span>dp.message(F.text)
 <span class="kw">async def</span> <span class="fn">echo</span>(message, bot):
     <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">f"شما گفتید: {message.text}"</span>)
 
 asyncio.run(bot.polling(dp))</code></pre>
-  <p>همین. پارامتر <code>bot</code> خودکار تزریق می‌شود — لازم نیست دستی پاس بدهی.</p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="sec-head rv">
+    <div class="eyebrow">Features</div>
+    <h2>چه چیزی داخلش هست</h2>
+  </div>
+  <p class="sub rv">۷۶ ماژول، هر کدام یک مسئولیت. هیچ چیز پنهان نیست.</p>
+
+  <div class="bento">
+    <div class="bcard w3 rv">
+      <div class="bico">⚡</div>
+      <h4>هسته async از صفر</h4>
+      <p>Bot، Dispatcher، Router، Magic Filter <code>F</code>، middleware زنجیره‌ای. long polling با offset اتمیک که آپدیت گم نمی‌کند.</p>
+      <span class="tag">core</span>
+    </div>
+    <div class="bcard w3 rv">
+      <div class="bico">🧠</div>
+      <h4>AI از روز اول</h4>
+      <p>دستیار با tool calling، حافظه per-user، RAG روی فایل‌های خودت. اگر یک ابزار خطا بدهد، کل مکالمه نمی‌شکند.</p>
+      <span class="tag">ai</span>
+    </div>
+    <div class="bcard w2 rv">
+      <div class="bico">💬</div>
+      <h4>ویزارد مکالمه</h4>
+      <p>پرسش‌وپاسخ خطی با <code>async with</code>. بدون دست‌وپنجه نرم کردن با FSM.</p>
+      <span class="tag">conversation</span>
+    </div>
+    <div class="bcard w2 rv">
+      <div class="bico">⌨️</div>
+      <h4>منوی چندصفحه‌ای</h4>
+      <p>دکمه‌های قبلی/بعدی و شماره صفحه خودکار ساخته می‌شوند.</p>
+      <span class="tag">keyboards</span>
+    </div>
+    <div class="bcard w2 rv">
+      <div class="bico">🔐</div>
+      <h4>مینی‌اپ امن</h4>
+      <p>اعتبارسنجی HMAC <code>initData</code> دقیقاً مطابق مستندات رسمی بله.</p>
+      <span class="tag">miniapp</span>
+    </div>
+    <div class="bcard w3 rv">
+      <div class="bico">🏗️</div>
+      <h4>بدون نوشتن کد</h4>
+      <p>Flow Builder با JSON، CLI جادویی، dry-run بدون توکن. وقتی ربات بزرگ شد، <code>codegen</code> همان جریان را به پایتون تبدیل می‌کند.</p>
+      <span class="tag">flows · cli</span>
+    </div>
+    <div class="bcard w3 rv">
+      <div class="bico">🔌</div>
+      <h4>اتصال به هر سرویس</h4>
+      <p>Connector با retry خودکار روی 5xx و 429، احترام به <code>Retry-After</code>. به‌علاوه سفیر، پرداخت، Business API.</p>
+      <span class="tag">connectors · payments</span>
+    </div>
+    <div class="bcard w2 rv">
+      <div class="bico">📊</div>
+      <h4>Observability</h4>
+      <p>متریک Prometheus، لاگ JSON، health check.</p>
+      <span class="tag">observability</span>
+    </div>
+    <div class="bcard w2 rv">
+      <div class="bico">🛡️</div>
+      <h4>امنیت</h4>
+      <p>AntiSpam، AuditLog، RBAC، Captcha، Secrets.</p>
+      <span class="tag">security</span>
+    </div>
+    <div class="bcard w2 rv">
+      <div class="bico">🐳</div>
+      <h4>آماده تولید</h4>
+      <p>Dockerfile، CI روی ۴ نسخه پایتون، تست end-to-end.</p>
+      <span class="tag">devops</span>
+    </div>
+  </div>
+</section>
+
+<section id="layers">
+  <div class="sec-head rv">
+    <div class="eyebrow">Access Layers</div>
+    <h2>سه لایه دسترسی</h2>
+  </div>
+  <p class="sub rv">هر لایه برای یک مخاطب. لایه پایین‌تر همیشه باز است.</p>
+
+  <div class="layers">
+    <div class="layer rv">
+      <div class="lv">۰</div>
+      <div class="lt"><b>بدون کد</b><span>Flow Builder، CLI، dry-run — برای صاحب کسب‌وکار</span></div>
+      <div class="who">بدون پایتون</div>
+    </div>
+    <div class="layer rv">
+      <div class="lv">۱</div>
+      <div class="lt"><b>پایتون</b><span>Dispatcher، FSM، Filter، AI، Connector، Conversation</span></div>
+      <div class="who">برنامه‌نویس</div>
+    </div>
+    <div class="layer rv">
+      <div class="lv">۲</div>
+      <div class="lt"><b>خام</b><span><code>bot.request("anyMethod", {...})</code> — هر متد، هر JSON</span></div>
+      <div class="who">مهندس</div>
+    </div>
+  </div>
+
+  <div class="note rv">
+    <b>قانون:</b> هر کاری لایه ۱ می‌کند، لایه ۲ هم می‌کند. چیزی پنهان نیست.
+  </div>
+</section>
+
+<section id="nocode">
+  <div class="sec-head rv">
+    <div class="eyebrow">No-Code</div>
+    <h2>ربات بدون نوشتن کد</h2>
+  </div>
+  <p class="sub rv">برای کسی که پایتون نمی‌داند ولی ربات می‌خواهد.</p>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">terminal</span><button class="copy">کپی</button></div>
+<pre><code>badking new mybot       <span class="cm"># ساخت پروژه کامل</span>
+badking dry-run         <span class="cm"># تست جریان بدون توکن</span>
+badking codegen         <span class="cm"># تبدیل flow.json به کد پایتون</span>
+badking setup           <span class="cm"># تنظیم توکن</span>
+badking run             <span class="cm"># اجرا</span></code></pre>
+  </div>
+  <p class="rv"><code>flow.json</code> را با Notepad ویرایش کن:</p>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">flow.json</span><button class="copy">کپی</button></div>
+<pre><code>{
+  <span class="st">"start"</span>: <span class="st">"welcome"</span>,
+  <span class="st">"steps"</span>: {
+    <span class="st">"welcome"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"سلام! 👋"</span>, <span class="st">"next"</span>: <span class="st">"ask_name"</span>},
+    <span class="st">"ask_name"</span>: {<span class="st">"type"</span>: <span class="st">"ask"</span>, <span class="st">"text"</span>: <span class="st">"اسمت چیه؟"</span>, <span class="st">"save"</span>: <span class="st">"name"</span>, <span class="st">"next"</span>: <span class="st">"done"</span>},
+    <span class="st">"done"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"خوش آمدی {name}!"</span>}
+  }
+}</code></pre>
+  </div>
+  <p class="rv">بدون یک خط پایتون، یک ربات مکالمه‌ای داری. وقتی بزرگ شد، <code>badking codegen</code> همان جریان را به کد تبدیل می‌کند.</p>
 </section>
 
 <section id="examples">
-  <h2>نمونه‌های واقعی</h2>
-  <p class="sub">هر نمونه کد کامل و قابل اجراست، نه شبه‌کد.</p>
+  <div class="sec-head rv">
+    <div class="eyebrow">Examples</div>
+    <h2>نمونه‌های واقعی</h2>
+  </div>
+  <p class="sub rv">هر نمونه کد کامل و قابل اجراست، نه شبه‌کد.</p>
 
-  <h3 id="conversation">۱. ویزارد چندمرحله‌ای</h3>
-  <p>پرسش‌وپاسخ خطی بدون دست‌وپنجه نرم کردن با FSM:</p>
+  <h3 id="conversation" class="rv"><span class="num">۱</span> ویزارد چندمرحله‌ای</h3>
+  <p class="rv">پرسش‌وپاسخ خطی بدون دست‌وپنجه نرم کردن با FSM:</p>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">conversation.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> Bot, Dispatcher, F, ConversationManager
 
 bot = Bot(<span class="st">"TOKEN"</span>)
@@ -276,7 +706,7 @@ dp = Dispatcher()
 convos = ConversationManager()
 dp.register_middleware(convos)
 
-<span class="kw">@</span>dp.message(F.text == <span class="st">"/register"</span>)
+<span class="at">@</span>dp.message(F.text == <span class="st">"/register"</span>)
 <span class="kw">async def</span> <span class="fn">register</span>(message, bot):
     <span class="kw">async with</span> convos.conversation(bot, message.chat.id) <span class="kw">as</span> conv:
         <span class="kw">await</span> conv.send(<span class="st">"اسم کاملت چیه؟"</span>)
@@ -286,22 +716,25 @@ dp.register_middleware(convos)
         phone = <span class="kw">await</span> conv.get_response(timeout=<span class="nm">60</span>)
 
         <span class="kw">await</span> conv.send(<span class="st">f"ثبت شد ✅\nنام: {name.text}\nتلفن: {phone.text}"</span>)</code></pre>
-  <p>اگر کاربر جواب ندهد <code>ConversationTimeout</code> می‌گیری. اگر چت دیگری پیام بدهد، مزاحم مکالمه نمی‌شود.</p>
+  </div>
+  <p class="rv">اگر کاربر جواب ندهد <code>ConversationTimeout</code> می‌گیری. اگر چت دیگری پیام بدهد، مزاحم مکالمه نمی‌شود.</p>
 
-  <h3 id="pagination">۲. منوی چندصفحه‌ای</h3>
+  <h3 id="pagination" class="rv"><span class="num">۲</span> منوی چندصفحه‌ای</h3>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">pagination.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> KeyboardPaginator, F
 
 products = [<span class="st">"کتاب پایتون"</span>, <span class="st">"هدفون"</span>, <span class="st">"ماوس"</span>, <span class="st">"کیبورد"</span>, <span class="st">"مانیتور"</span>]
 paginator = KeyboardPaginator(products, per_page=<span class="nm">3</span>, prefix=<span class="st">"shop"</span>)
 
-<span class="kw">@</span>dp.message(F.text == <span class="st">"/shop"</span>)
+<span class="at">@</span>dp.message(F.text == <span class="st">"/shop"</span>)
 <span class="kw">async def</span> <span class="fn">shop</span>(message, bot):
     <span class="kw">await</span> bot.send_message(
         message.chat.id, <span class="st">"محصولی انتخاب کن:"</span>,
         reply_markup=paginator.markup(page=<span class="nm">0</span>).model_dump(exclude_none=<span class="kw">True</span>),
     )
 
-<span class="kw">@</span>dp.callback_query(F.data.startswith(<span class="st">"shop:"</span>))
+<span class="at">@</span>dp.callback_query(F.data.startswith(<span class="st">"shop:"</span>))
 <span class="kw">async def</span> <span class="fn">on_shop</span>(cq, bot):
     parsed = paginator.parse(cq.data)
     <span class="kw">if not</span> parsed:
@@ -314,9 +747,11 @@ paginator = KeyboardPaginator(products, per_page=<span class="nm">3</span>, pref
         )
     <span class="kw">elif</span> kind == <span class="st">"item"</span>:
         <span class="kw">await</span> bot.answer_callback_query(cq.id, <span class="st">f"انتخاب شد: {products[value]}"</span>)</code></pre>
-  <p>دکمه‌های «قبلی / بعدی» و شماره صفحه خودکار ساخته می‌شوند.</p>
+  </div>
 
-  <h3 id="fsm">۳. FSM پایدار با SQLite</h3>
+  <h3 id="fsm" class="rv"><span class="num">۳</span> FSM پایدار با SQLite</h3>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">fsm_order.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> Bot, Dispatcher, F, State, StatesGroup, SQLiteStorage
 
 <span class="kw">class</span> <span class="fn">Order</span>(StatesGroup):
@@ -326,18 +761,18 @@ paginator = KeyboardPaginator(products, per_page=<span class="nm">3</span>, pref
 dp = Dispatcher(storage=SQLiteStorage(<span class="st">"orders.db"</span>))
 bot = Bot(<span class="st">"TOKEN"</span>)
 
-<span class="kw">@</span>dp.message(F.text == <span class="st">"/order"</span>)
+<span class="at">@</span>dp.message(F.text == <span class="st">"/order"</span>)
 <span class="kw">async def</span> <span class="fn">start_order</span>(message, state):
     <span class="kw">await</span> state.set_state(Order.item)
     <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"چه چیزی می‌خواهی؟"</span>)
 
-<span class="kw">@</span>dp.message(Order.item)
+<span class="at">@</span>dp.message(Order.item)
 <span class="kw">async def</span> <span class="fn">get_item</span>(message, state):
     <span class="kw">await</span> state.update_data(item=message.text)
     <span class="kw">await</span> state.set_state(Order.address)
     <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"آدرس تحویل؟"</span>)
 
-<span class="kw">@</span>dp.message(Order.address)
+<span class="at">@</span>dp.message(Order.address)
 <span class="kw">async def</span> <span class="fn">get_address</span>(message, state):
     data = <span class="kw">await</span> state.get_data()
     <span class="kw">await</span> state.clear()
@@ -345,9 +780,12 @@ bot = Bot(<span class="st">"TOKEN"</span>)
         message.chat.id,
         <span class="st">f"سفارش ثبت شد ✅\nکالا: {data['item']}\nآدرس: {message.text}"</span>,
     )</code></pre>
-  <p>ربات را ری‌استارت کن — state سر جایش است.</p>
+  </div>
+  <p class="rv">ربات را ری‌استارت کن — state سر جایش است.</p>
 
-  <h3 id="ai">۴. دستیار هوشمند با ابزار</h3>
+  <h3 id="ai" class="rv"><span class="num">۴</span> دستیار هوشمند با ابزار</h3>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">ai_assistant.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> AIAssistant, OpenAICompatibleLLM
 
 llm = OpenAICompatibleLLM(
@@ -364,9 +802,12 @@ assistant = AIAssistant(
 
 answer = <span class="kw">await</span> assistant.reply(user_key=<span class="fn">str</span>(message.from_user.id), text=message.text)
 <span class="kw">await</span> bot.send_message(message.chat.id, answer)</code></pre>
-  <p>مدل خودش تصمیم می‌گیرد کدام ابزار را صدا بزند. اگر ابزار خطا بدهد، کل مکالمه نمی‌شکند.</p>
+  </div>
+  <p class="rv">مدل خودش تصمیم می‌گیرد کدام ابزار را صدا بزند. اگر ابزار خطا بدهد، کل مکالمه نمی‌شکند.</p>
 
-  <h3 id="rag">۵. RAG روی مستندات خودت</h3>
+  <h3 id="rag" class="rv"><span class="num">۵</span> RAG روی مستندات خودت</h3>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">rag.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> SimpleRAG, AIAssistant, OpenAICompatibleLLM
 
 rag = SimpleRAG()
@@ -374,9 +815,12 @@ rag.add_text(<span class="fn">open</span>(<span class="st">"faq.txt"</span>, enc
 rag.add_text(<span class="fn">open</span>(<span class="st">"policies.txt"</span>, encoding=<span class="st">"utf-8"</span>).read(), source=<span class="st">"policies"</span>)
 
 assistant = AIAssistant(OpenAICompatibleLLM(...), rag=rag)</code></pre>
-  <p>ربات از محتوای فایل‌های تو جواب می‌دهد، نه از خودش.</p>
+  </div>
+  <p class="rv">ربات از محتوای فایل‌های تو جواب می‌دهد، نه از خودش.</p>
 
-  <h3 id="connector">۶. اتصال به هر سرویس خارجی</h3>
+  <h3 id="connector" class="rv"><span class="num">۶</span> اتصال به هر سرویس خارجی</h3>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">connector.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> Connector, Auth
 
 zarinpal = Connector(
@@ -390,9 +834,12 @@ result = <span class="kw">await</span> zarinpal.post(<span class="st">"/pg/v4/pa
     <span class="st">"amount"</span>: <span class="nm">50000</span>,
     <span class="st">"callback_url"</span>: <span class="st">"https://example.com/callback"</span>,
 })</code></pre>
-  <p>Retry خودکار روی 5xx و 429، با احترام به <code>Retry-After</code>.</p>
+  </div>
+  <p class="rv">Retry خودکار روی 5xx و 429، با احترام به <code>Retry-After</code>.</p>
 
-  <h3 id="payment">۷. پرداخت داخل بله</h3>
+  <h3 id="payment" class="rv"><span class="num">۷</span> پرداخت داخل بله</h3>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">payment.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> PaymentToolkit
 
 pay = PaymentToolkit(bot)
@@ -405,55 +852,27 @@ pay = PaymentToolkit(bot)
     provider_token=<span class="st">"..."</span>,
     prices=[{<span class="st">"label"</span>: <span class="st">"کتاب"</span>, <span class="st">"amount"</span>: <span class="nm">500000</span>}],
 )</code></pre>
+  </div>
 
-  <h3 id="miniapp">۸. مینی‌اپ با اعتبارسنجی امن</h3>
+  <h3 id="miniapp" class="rv"><span class="num">۸</span> مینی‌اپ با اعتبارسنجی امن</h3>
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">miniapp.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> validate_init_data
 
 <span class="cm"># در سرور مینی‌اپ، initData را از کلاینت بگیر</span>
 data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123456:ABC..."</span>)
 <span class="fn">print</span>(data.user.id, data.user.first_name)   <span class="cm"># امضا تأیید شد</span></code></pre>
-  <p>الگوریتم دقیقاً مطابق مستندات رسمی بله: فیلدها الفبایی مرتب، با <code>\n</code> متصل، HMAC-SHA256.</p>
-</section>
-
-<section id="layers">
-  <h2>سه لایه دسترسی</h2>
-  <p class="sub">هر لایه برای یک مخاطب. لایه پایین‌تر همیشه باز است.</p>
-  <table>
-    <thead><tr><th>لایه</th><th>مخاطب</th><th>ابزار</th></tr></thead>
-    <tbody>
-      <tr><td><b>۰ — بدون کد</b></td><td>صاحب کسب‌وکار</td><td>Flow Builder، CLI، dry-run</td></tr>
-      <tr><td><b>۱ — پایتون</b></td><td>برنامه‌نویس</td><td>Dispatcher، FSM، Filter، AI، Connector، Conversation</td></tr>
-      <tr><td><b>۲ — خام</b></td><td>مهندس</td><td><code>bot.request("anyMethod", {...})</code> — هر متد، هر JSON</td></tr>
-    </tbody>
-  </table>
-  <div class="note">
-    <b>قانون:</b> هر کاری لایه ۱ می‌کند، لایه ۲ هم می‌کند. چیزی پنهان نیست.
   </div>
-</section>
-
-<section id="nocode">
-  <h2>ربات بدون نوشتن کد</h2>
-  <p class="sub">برای کسی که پایتون نمی‌داند ولی ربات می‌خواهد.</p>
-<pre><code>badking new mybot       <span class="cm"># ساخت پروژه کامل</span>
-badking dry-run         <span class="cm"># تست جریان بدون توکن</span>
-badking codegen         <span class="cm"># تبدیل flow.json به کد پایتون</span>
-badking setup           <span class="cm"># تنظیم توکن</span>
-badking run             <span class="cm"># اجرا</span></code></pre>
-  <p><code>flow.json</code> را با Notepad ویرایش کن:</p>
-<pre><code>{
-  <span class="st">"start"</span>: <span class="st">"welcome"</span>,
-  <span class="st">"steps"</span>: {
-    <span class="st">"welcome"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"سلام! 👋"</span>, <span class="st">"next"</span>: <span class="st">"ask_name"</span>},
-    <span class="st">"ask_name"</span>: {<span class="st">"type"</span>: <span class="st">"ask"</span>, <span class="st">"text"</span>: <span class="st">"اسمت چیه؟"</span>, <span class="st">"save"</span>: <span class="st">"name"</span>, <span class="st">"next"</span>: <span class="st">"done"</span>},
-    <span class="st">"done"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"خوش آمدی {name}!"</span>}
-  }
-}</code></pre>
-  <p>بدون یک خط پایتون، یک ربات مکالمه‌ای داری. وقتی بزرگ شد، <code>badking codegen</code> همان جریان را به کد تبدیل می‌کند.</p>
+  <p class="rv">الگوریتم دقیقاً مطابق مستندات رسمی بله: فیلدها الفبایی مرتب، با <code>\n</code> متصل، HMAC-SHA256.</p>
 </section>
 
 <section id="compare">
-  <h2>مقایسه با aiobale</h2>
-  <p class="sub">صادقانه، بدون اغراق.</p>
+  <div class="sec-head rv">
+    <div class="eyebrow">Comparison</div>
+    <h2>مقایسه با aiobale</h2>
+  </div>
+  <p class="sub rv">صادقانه، بدون اغراق. هر ردیف را می‌توانی در کد راستی‌آزمایی کنی.</p>
+  <div class="tbl-wrap rv">
   <table>
     <thead><tr><th>قابلیت</th><th>aiobale</th><th>BADKING</th></tr></thead>
     <tbody>
@@ -477,123 +896,254 @@ badking run             <span class="cm"># اجرا</span></code></pre>
       <tr><td>مستندات فارسی</td><td class="no">✗</td><td class="yes">✓</td></tr>
     </tbody>
   </table>
+  </div>
 </section>
 
 <section id="structure">
-  <h2>ساختار پروژه</h2>
-  <p class="sub">۷۶ ماژول، هر کدام یک مسئولیت.</p>
-<pre><code>badking/
-├── core/           Bot، Dispatcher، Router، خطاها
-├── types/          مدل‌های Pydantic
-├── filters/        Magic Filter F
-├── fsm/            State، StatesGroup، FSMContext
-├── storage/        Memory، SQLite
-├── conversation/   ویزارد پرسش‌وپاسخ
-├── keyboards/      KeyboardPaginator
-├── miniapp/        اعتبارسنجی HMAC initData
-├── safir/          سرویس سفیر (OTP، قالب)
-├── payments/       فاکتور و پرداخت
-├── business/       Business API
-├── ai/             LLM، حافظه، RAG، دستیار
-├── flows/          Flow Builder بدون کد
-├── connectors/     HTTP به هر سرویس
-├── jobs/           Scheduler، JobQueue
-├── events/         Event Bus
-├── orm/            Store
-├── media/          Voice، OCR
-├── observability/  Metrics، لاگ JSON
-├── security/       AntiSpam، AuditLog، RBAC، Secrets
-├── testing/        DryBot، Health
-├── middleware/     logging، metrics، antispam
-├── ratelimit/      Rate Limiter با اولویت
-├── recovery/       Offset Store اتمیک
-├── adapters/       Multi-platform
-├── compat/         سازگاری aiogram/PTB
-└── hybrid/         Self-bot (ایزوله، پیش‌فرض خاموش)</code></pre>
+  <div class="sec-head rv">
+    <div class="eyebrow">Structure</div>
+    <h2>ساختار پروژه</h2>
+  </div>
+  <p class="sub rv">۷۶ ماژول، هر کدام یک مسئولیت.</p>
+  <div class="tree rv">
+    <div class="trow"><span class="tp">core/</span><span class="td">Bot، Dispatcher، Router، خطاها</span></div>
+    <div class="trow"><span class="tp">types/</span><span class="td">مدل‌های Pydantic</span></div>
+    <div class="trow"><span class="tp">filters/</span><span class="td">Magic Filter F</span></div>
+    <div class="trow"><span class="tp">fsm/</span><span class="td">State، StatesGroup، FSMContext</span></div>
+    <div class="trow"><span class="tp">storage/</span><span class="td">Memory، SQLite</span></div>
+    <div class="trow"><span class="tp">conversation/</span><span class="td">ویزارد پرسش‌وپاسخ</span></div>
+    <div class="trow"><span class="tp">keyboards/</span><span class="td">KeyboardPaginator</span></div>
+    <div class="trow"><span class="tp">miniapp/</span><span class="td">اعتبارسنجی HMAC initData</span></div>
+    <div class="trow"><span class="tp">safir/</span><span class="td">سرویس سفیر (OTP، قالب)</span></div>
+    <div class="trow"><span class="tp">payments/</span><span class="td">فاکتور و پرداخت</span></div>
+    <div class="trow"><span class="tp">business/</span><span class="td">Business API</span></div>
+    <div class="trow"><span class="tp">ai/</span><span class="td">LLM، حافظه، RAG، دستیار</span></div>
+    <div class="trow"><span class="tp">flows/</span><span class="td">Flow Builder بدون کد</span></div>
+    <div class="trow"><span class="tp">connectors/</span><span class="td">HTTP به هر سرویس</span></div>
+    <div class="trow"><span class="tp">jobs/</span><span class="td">Scheduler، JobQueue</span></div>
+    <div class="trow"><span class="tp">events/</span><span class="td">Event Bus</span></div>
+    <div class="trow"><span class="tp">orm/</span><span class="td">Store</span></div>
+    <div class="trow"><span class="tp">media/</span><span class="td">Voice، OCR</span></div>
+    <div class="trow"><span class="tp">observability/</span><span class="td">Metrics، لاگ JSON</span></div>
+    <div class="trow"><span class="tp">security/</span><span class="td">AntiSpam، AuditLog، RBAC، Secrets</span></div>
+    <div class="trow"><span class="tp">testing/</span><span class="td">DryBot، Health</span></div>
+    <div class="trow"><span class="tp">middleware/</span><span class="td">logging، metrics، antispam</span></div>
+    <div class="trow"><span class="tp">ratelimit/</span><span class="td">Rate Limiter با اولویت</span></div>
+    <div class="trow"><span class="tp">recovery/</span><span class="td">Offset Store اتمیک</span></div>
+    <div class="trow"><span class="tp">adapters/</span><span class="td">Multi-platform</span></div>
+    <div class="trow"><span class="tp">compat/</span><span class="td">سازگاری aiogram/PTB</span></div>
+    <div class="trow"><span class="tp">hybrid/</span><span class="td">Self-bot (ایزوله، پیش‌فرض خاموش)</span></div>
+  </div>
 </section>
 
 <section id="limits">
-  <h2>مرز صادقانه</h2>
-  <p class="sub">این‌ها را باید بدانی، نه اینکه بعداً کشف کنی.</p>
+  <div class="sec-head rv">
+    <div class="eyebrow">Honest Limits</div>
+    <h2>مرز صادقانه</h2>
+  </div>
+  <p class="sub rv">این‌ها را باید بدانی، نه اینکه بعداً کشف کنی.</p>
 
-  <div class="note warn">
+  <div class="note warn rv">
     <b>هر کاری API رسمی بله ندهد، با توکن رسمی از هیچ کتابخانه‌ای برنمی‌آید.</b>
     نه BADKING، نه aiobale، نه هیچ‌کس دیگر. این محدودیت بله است، نه کتابخانه.
   </div>
 
-  <h3>تاریخچه پیام‌ها</h3>
-  <p>
-    <code>iter_messages</code> ما آپدیت‌های موجود را می‌پیماید. تاریخچه کامل و قدیمی‌تر از ۲۴ ساعت با توکن رسمی ممکن نیست — برای آن لایه hybrid لازم است.
-  </p>
+  <h3 class="rv">تاریخچه پیام‌ها</h3>
+  <p class="rv"><code>iter_messages</code> ما آپدیت‌های موجود را می‌پیماید. تاریخچه کامل و قدیمی‌تر از ۲۴ ساعت با توکن رسمی ممکن نیست — برای آن لایه hybrid لازم است.</p>
 
-  <h3>ریسک self-bot</h3>
-  <p>
-    لایه <code>hybrid</code> پیش‌فرض خاموش است و بدون <code>ack_risk=True</code> فعال نمی‌شود. دلیلش: Internal API غیررسمی است، می‌شکند، و می‌تواند اکانت شخصی‌ات را ببندد.
-  </p>
+  <h3 class="rv">ریسک self-bot</h3>
+  <p class="rv">لایه <code>hybrid</code> پیش‌فرض خاموش است و بدون <code>ack_risk=True</code> فعال نمی‌شود. دلیلش: Internal API غیررسمی است، می‌شکند، و می‌تواند اکانت شخصی‌ات را ببندد.</p>
 
-  <h3>اعداد تأییدنشده</h3>
-  <p>
-    اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت» در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از <code>retry_after</code> واقعی سرور یاد می‌گیرند.
-  </p>
+  <h3 class="rv">اعداد تأییدنشده</h3>
+  <p class="rv">اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت» در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از <code>retry_after</code> واقعی سرور یاد می‌گیرند.</p>
 
-  <h3>RPC داخلی self-bot</h3>
-  <p>
-    پیاده‌سازی کامل ۸۰+ متد RPC داخلی هنوز انجام نشده. رابط و ایزولاسیون آماده است؛ خود RPC به‌عنوان پلاگین جداگانه منتشر می‌شود.
-  </p>
-</section>
-
-<section id="more">
-  <h2>بیشتر</h2>
-  <div class="grid">
-    <div class="card">
-      <h4>مستندات بله</h4>
-      <p>خلاصه مستندات رسمی API بله، با نکات عملی.</p>
-    </div>
-    <div class="card">
-      <h4>نقشه راه</h4>
-      <p>وضعیت فازها و آنچه در نسخه‌های بعدی می‌آید.</p>
-    </div>
-    <div class="card">
-      <h4>هشدار self-bot</h4>
-      <p>چرا لایه hybrid ایزوله است و چه ریسکی دارد.</p>
-    </div>
-    <div class="card">
-      <h4>شروع سریع</h4>
-      <p>راهنمای قدم‌به‌قدم فارسی برای اولین ربات.</p>
-    </div>
-  </div>
+  <h3 class="rv">RPC داخلی self-bot</h3>
+  <p class="rv">پیاده‌سازی کامل ۸۰+ متد RPC داخلی هنوز انجام نشده. رابط و ایزولاسیون آماده است؛ خود RPC به‌عنوان پلاگین جداگانه منتشر می‌شود.</p>
 </section>
 
 </main>
 </div>
 
 <footer>
-  BADKING — MIT License · <a href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">GitHub</a> · docs.badking.ir
+  <div class="fwrap">
+    <a class="brand" href="#top"><span class="mark">B</span><b>BAD<i>KING</i></b></a>
+    <p>فریمورک ربات بله · MIT License</p>
+    <div class="links">
+      <a href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/badking-daniyal/badking/blob/main/docs/bale-api.md" target="_blank" rel="noopener">مستندات بله</a>
+      <a href="https://github.com/badking-daniyal/badking/blob/main/docs/roadmap.md" target="_blank" rel="noopener">نقشه راه</a>
+      <a href="https://badking.ir" target="_blank" rel="noopener">badking.ir</a>
+    </div>
+  </div>
 </footer>
 
 <script>
-// تم
-const root = document.documentElement;
-const btn = document.getElementById('theme');
-const saved = localStorage.getItem('bk-theme');
-if (saved) root.setAttribute('data-theme', saved);
-btn.addEventListener('click', () => {
-  const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-  root.setAttribute('data-theme', next);
-  localStorage.setItem('bk-theme', next);
-});
+(function(){
+  'use strict';
+  var root = document.documentElement;
 
-// هایلایت سایدبار با اسکرول
-const links = [...document.querySelectorAll('aside a')];
-const sections = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
-const obs = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
-    }
+  /* ---------- theme ---------- */
+  var saved = null;
+  try { saved = localStorage.getItem('bk-theme'); } catch(e){}
+  if (saved) root.setAttribute('data-theme', saved);
+  var tb = document.getElementById('theme');
+  if (tb) tb.addEventListener('click', function(){
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('bk-theme', next); } catch(e){}
   });
-}, { rootMargin: '-84px 0px -70% 0px' });
-sections.forEach(s => obs.observe(s));
+
+  /* ---------- progress bar ---------- */
+  var prog = document.getElementById('prog');
+  function onScroll(){
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? (window.scrollY / h) * 100 : 0;
+    if (prog) prog.style.width = p + '%';
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  /* ---------- spotlight ---------- */
+  var spot = document.getElementById('spot');
+  if (spot && window.matchMedia('(pointer:fine)').matches) {
+    window.addEventListener('mousemove', function(e){
+      spot.style.left = e.clientX + 'px';
+      spot.style.top = e.clientY + 'px';
+    }, {passive:true});
+  }
+
+  /* ---------- reveal on scroll ---------- */
+  var items = document.querySelectorAll('.rv');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, {rootMargin:'0px 0px -8% 0px', threshold:0.06});
+    items.forEach(function(el, i){
+      el.style.transitionDelay = Math.min(i % 4, 3) * 55 + 'ms';
+      io.observe(el);
+    });
+  } else {
+    items.forEach(function(el){ el.classList.add('in'); });
+  }
+
+  /* ---------- sidebar active ---------- */
+  var links = [].slice.call(document.querySelectorAll('aside a'));
+  var targets = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  if ('IntersectionObserver' in window) {
+    var so = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (!en.isIntersecting) return;
+        links.forEach(function(l){
+          l.classList.toggle('active', l.getAttribute('href') === '#' + en.target.id);
+        });
+      });
+    }, {rootMargin:'-84px 0px -72% 0px'});
+    targets.forEach(function(t){ if (t) so.observe(t); });
+  }
+
+  /* ---------- count up ---------- */
+  var counters = document.querySelectorAll('[data-count]');
+  var fa = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+  function toFa(n){ return String(n).replace(/\d/g, function(d){ return fa[+d]; }); }
+  function runCount(el){
+    var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+    var start = null, dur = 1100;
+    function step(ts){
+      if (start === null) start = ts;
+      var t = Math.min((ts - start) / dur, 1);
+      var eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = toFa(Math.round(target * eased));
+      if (t < 1) requestAnimationFrame(step);
+      else el.textContent = toFa(target);
+    }
+    requestAnimationFrame(step);
+  }
+  if ('IntersectionObserver' in window) {
+    var co = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting) { runCount(en.target); co.unobserve(en.target); }
+      });
+    }, {threshold:0.4});
+    counters.forEach(function(c){ co.observe(c); });
+  } else {
+    counters.forEach(function(c){ c.textContent = toFa(c.getAttribute('data-count')); });
+  }
+
+  /* ---------- copy buttons ---------- */
+  [].slice.call(document.querySelectorAll('.copy')).forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var box = btn.closest('.codebox');
+      var code = box ? box.querySelector('pre code') : null;
+      if (!code) return;
+      var text = code.innerText;
+      function done(){
+        btn.textContent = 'کپی شد ✓';
+        btn.classList.add('ok');
+        setTimeout(function(){ btn.textContent = 'کپی'; btn.classList.remove('ok'); }, 1700);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function(){ fallback(); });
+      } else { fallback(); }
+      function fallback(){
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch(e){}
+        document.body.removeChild(ta);
+      }
+    });
+  });
+
+  /* ---------- terminal typing ---------- */
+  var body = document.getElementById('termBody');
+  if (body) {
+    var lines = [
+      {t:'p', s:'$ pip install badking'},
+      {t:'o', s:'Successfully installed badking-0.1.0'},
+      {t:'p', s:'$ python examples/echo_bot.py --mock'},
+      {t:'c', s:'→ سلام! من ربات BADKING هستم 🤖'},
+      {t:'c', s:'→ شما گفتید: سلام دنیا'},
+      {t:'o', s:'✓ 98 tests passed'}
+    ];
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      body.innerHTML = lines.map(function(l){
+        return '<span class="ln ' + l.t + '">' + l.s + '</span>';
+      }).join('');
+    } else {
+      var li = 0, ci = 0, cur = document.createElement('span');
+      cur.className = 'cursor';
+      var curLine = document.createElement('span');
+      curLine.className = 'ln p';
+      body.appendChild(curLine);
+      body.appendChild(cur);
+      function type(){
+        if (li >= lines.length) {
+          setTimeout(function(){ body.innerHTML=''; li=0; ci=0; start(); }, 4200);
+          return;
+        }
+        var line = lines[li];
+        if (ci === 0) curLine.className = 'ln ' + line.t;
+        curLine.textContent = line.s.slice(0, ci + 1);
+        ci++;
+        if (ci >= line.s.length) {
+          li++; ci = 0;
+          curLine = document.createElement('span');
+          curLine.className = 'ln';
+          body.insertBefore(curLine, cur);
+          setTimeout(type, 340);
+        } else {
+          setTimeout(type, 26);
+        }
+      }
+      function start(){ type(); }
+      setTimeout(start, 500);
+    }
+  }
+})();
 </script>
 </body>
 </html>
+
