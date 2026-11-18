@@ -1,6 +1,6 @@
-# BADKING 🤖👑
+# BADKING
 
-**فریمورک همهکاره، async و AI-Native برای ساخت رباتهای [بله (Bale)](https://www.bale.ai/).**
+**فریمورک همه کاره، async و AI-Native برای ساخت رباتهای [بله (Bale)](https://www.bale.ai/).**
 Superset of aiobale — هر آنچه aiobale دارد، بهتر و بیشتر.
 
 > از کسی که کد بلد نیست تا یک هکر حرفهای: سه لایه دسترسی، بدون محدودیت، و هر چیزی قابل ساخت.
@@ -121,4 +121,4 @@ python -m pytest tests/ -q     # 87 passed
 
 MIT — آزاد برای استفاده، تغییر و فروش.
 
-**ساختهشده برای برند BADKING.** 🤖👑
+badking.ir
