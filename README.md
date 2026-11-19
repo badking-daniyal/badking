@@ -492,6 +492,151 @@ extract_username("@daniyal")                      # "daniyal"
 
 ---
 
+## وقتی شبکه خراب می‌شود
+
+هر کتابخانه‌ای می‌تواند در شرایط خوب کار کند. تفاوت در شرایط بد است.
+
+### تلاش مجدد هوشمند
+
+```python
+from badking import RetryPolicy, NetworkError
+
+policy = RetryPolicy(attempts=4, base_delay=0.5, max_delay=8.0)
+
+result = await policy.run(bot.send_message, peer, "سلام")
+```
+
+`RetryPolicy` روی خطای ورودی غلط تلاش مجدد **نمی‌کند** — `ValidationError`
+دوباره زدن ندارد، فقط وقت تلف کردن است. روی `NetworkError` و
+`RateLimitError` می‌زند، و اگر سرور گفته باشد «۳۰ ثانیه صبر کن»، همان را
+رعایت می‌کند نه تاخیر خودش را.
+
+سه الگوی backoff: `FIXED`، `LINEAR`، `EXPONENTIAL` (پیش‌فرض). jitter هم
+هست تا وقتی ۱۰۰۰ کلاینت هم‌زمان قطع می‌شوند، هم‌زمان هم برنگردند.
+
+### مدارشکن
+
+```python
+from badking import CircuitBreaker
+
+breaker = CircuitBreaker(failure_threshold=5, cooldown=30.0)
+await breaker.call(bot.send_message, peer, "سلام")
+```
+
+وقتی سرور بله پایین است، ۱۰۰۰ درخواست پشت‌سرهم فقط وضعیت را بدتر می‌کند.
+مدارشکن بعد از ۵ خطای پیاپی باز می‌شود، ۳۰ ثانیه هیچ درخواستی نمی‌فرستد،
+بعد یک درخواست آزمایشی می‌زند. اگر جواب داد، بسته می‌شود.
+
+### صف با فشار ورودی
+
+```python
+from badking import RequestQueue
+
+queue = RequestQueue(concurrency=5, rate=20.0)
+await queue.submit(bot.send_message, peer, "سلام")
+```
+
+`concurrency` سقف درخواست هم‌زمان، `rate` سقف درخواست در ثانیه، و
+`max_pending` سقف صف انتظار. بدون این‌ها، ارسال انبوه به flood-wait می‌خورد.
+
+### همه با هم
+
+```python
+from badking import ResilientCaller
+
+caller = ResilientCaller()   # صف + مدارشکن + تلاش مجدد
+await caller(bot.send_message, peer, "سلام")
+```
+
+ترتیب از بیرون به درون: صف → مدارشکن → تلاش مجدد. یعنی سه تلاش ناموفق
+**یک** شکست حساب می‌شود، نه سه — وگرنه مدارشکن سه برابر سریع باز می‌شد.
+
+---
+
+## خطاهایی که می‌گویند چه کار کنی
+
+پیام `KeyError: 'result'` به کسی نمی‌گوید چه کار کند. هر خطای BADKING سه
+چیز دارد: چه شد، چرا، و **چه کار کن**.
+
+```python
+from badking import BADKINGError, RateLimitError, NotAdminError
+
+try:
+    await bot.send_message(peer, "سلام")
+except RateLimitError as exc:
+    print(exc.retry_after)   # چند ثانیه صبر کن
+except NotAdminError as exc:
+    print(exc.hint)          # «اول ربات را ادمین کن، یا از مالک گروه بخواه»
+except BADKINGError as exc:
+    print(exc.diagnose())    # گزارش کامل، آماده برای Issue
+```
+
+`diagnose()` این را چاپ می‌کند:
+
+```
+RateLimitError: زیاد
+  error_code: RATE_LIMITED
+  server_code: 429
+  method: SendMessage
+  راه‌حل: کمی صبر کن. `retry_after` می‌گوید چند ثانیه.
+```
+
+۴۰+ کلاس خطا در ده دسته: احراز هویت، اتصال، نرخ، مجوز، پیام، رسانه،
+اعتبارسنجی، پروتکل، ذخیره‌سازی، پیکربندی. هر کدام `retryable` دارد، پس
+می‌توانی خودکار تصمیم بگیری.
+
+**توکن در لاگ نمی‌افتد.** `format_exception()` هر چیزی شبیه
+`123456:AAH...` و هر کلید هگز بلند را با `<TOKEN>` عوض می‌کند.
+
+---
+
+## وقتی کار نمی‌کند
+
+```bash
+badking doctor
+```
+
+```
+BADKING doctor
+──────────────────────────────────────────────
+محیط
+  ✓ پایتون  3.9.10
+  ✓ سیستم  Windows 10
+
+بسته
+  ✓ badking  نسخه 0.1.0
+
+وابستگی‌های اختیاری
+  ✓ websockets  لایه self-bot
+  ! pillow  نصب نیست — پردازش تصویر
+
+پیکربندی
+  ! توکن  پیدا نشد
+  ✓ .env  D:\AI\badking\.env
+
+دسترسی
+  ✓ نوشتن در پوشه
+  ✓ دیسک  223.6 GB آزاد
+
+شبکه
+  ✓ سرور بله  tapi.bale.ai:443
+──────────────────────────────────────────────
+  آماده کار. 2 مورد اختیاری نصب نیست.
+```
+
+هر ✗ یک راه‌حل زیرش دارد. `badking doctor --verbose` همه راه‌حل‌ها را
+نشان می‌دهد، `--no-network` تست اتصال را رد می‌کند.
+
+بقیه دستورها:
+
+```bash
+badking info          # نسخه، تعداد RPC، کدام قابلیت در دسترس است
+badking check .       # بررسی نحوی همه فایل‌های پایتون پروژه
+badking test          # اجرای تست‌ها
+```
+
+---
+
 ## سه لایه دسترسی
 
 | لایه | مخاطب | ابزار |
@@ -585,7 +730,7 @@ badking/
 - **شماره فیلدهای پروتکل داخلی، رسمی نیست.** هیچ‌کس آن‌ها را از بله نگرفته. تفاوت BADKING این است که همه در یک جدول JSON است و با `BADKING_RPC_SCHEMA` بدون آپدیت کتابخانه عوض می‌شود.
 - **اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت»** در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از `retry_after` واقعی سرور یاد می‌گیرند.
 - **Self-bot کامل پیاده‌سازی شده.** ۷۹ RPC با اسکیما و شماره فیلد واقعی (تطابق کامل با کلاینت رسمی بله)، ورود با شماره + کد SMS، تاریخچه، ارسال متن و فایل، واکنش، گروه و کانال، مخاطبین، کیف پول، رویدادها. ۸۸ تست آفلاین.
-- **۲۷۳ تست، همه آفلاین.** هیچ‌کدام به سرور بله وصل نمی‌شوند.
+- **۳۶۲ تست، همه آفلاین.** هیچ‌کدام به سرور بله وصل نمی‌شوند.
 
 ---
 

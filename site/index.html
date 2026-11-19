@@ -486,7 +486,7 @@ footer{
 <div class="hero" id="intro">
   <div class="hero-grid">
   <div class="hero-copy">
-  <div class="pill"><span class="dot"></span> نسخه ۰.۱.۰ — ۲۷۳ تست پاس‌شده</div>
+  <div class="pill"><span class="dot"></span> نسخه ۰.۱.۰ — ۳۶۲ تست پاس‌شده</div>
   <h1>ربات بله بساز.<br><span class="grad">بدون محدودیت.</span></h1>
   <p class="lead">
     فریمورک همه کاره، async و <b>AI-Native</b> برای بله. از کسی که کد بلد نیست تا مهندسی که به RPC خام نیاز دارد — سه لایه دسترسی، همه باز.
@@ -507,9 +507,9 @@ footer{
   </div>
 
   <div class="stats">
-    <div class="stat"><b data-count="273">۰</b><span>تست پاس</span></div>
-    <div class="stat"><b data-count="98">۰</b><span>صادرات</span></div>
-    <div class="stat"><b data-count="87">۰</b><span>ماژول</span></div>
+    <div class="stat"><b data-count="362">۰</b><span>تست پاس</span></div>
+    <div class="stat"><b data-count="143">۰</b><span>صادرات</span></div>
+    <div class="stat"><b data-count="89">۰</b><span>ماژول</span></div>
     <div class="stat"><b data-count="3">۰</b><span>لایه دسترسی</span></div>
     <div class="stat"><b>MIT</b><span>مجوز</span></div>
   </div>
@@ -992,6 +992,12 @@ data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123
       <tr><td>Conversation (ویزارد)</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>Magic Filter F</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>Middleware + Rate Limit</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>Circuit Breaker</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>Retry با backoff نمایی</td><td class="no">✗</td><td class="yes">✓ + احترام به retry_after</td></tr>
+      <tr><td>صف درخواست با backpressure</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>سلسله‌مراتب خطا با راه‌حل</td><td class="no">✗ پیام خام</td><td class="yes">✓ ۴۰+ کلاس + hint</td></tr>
+      <tr><td>پاک‌سازی توکن از لاگ</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>ابزار عیب‌یابی محیط</td><td class="no">✗</td><td class="yes">✓ <code>badking doctor</code></td></tr>
       <tr><td>Webhook Server</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>MiniApp + HMAC</td><td class="no">✗</td><td class="yes">✓</td></tr>
       <tr><td>سفیر (OTP، قالب)</td><td class="no">✗</td><td class="yes">✓</td></tr>
@@ -1013,12 +1019,13 @@ data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123
     <div class="eyebrow">Structure</div>
     <h2>ساختار پروژه</h2>
   </div>
-  <p class="sub rv">۸۷ ماژول، هر کدام یک مسئولیت.</p>
+  <p class="sub rv">۸۹ ماژول، هر کدام یک مسئولیت.</p>
   <div class="tree rv">
     <div class="trow"><span class="tp">core/</span><span class="td">Bot، Dispatcher، Router، خطاها</span></div>
     <div class="trow"><span class="tp">types/</span><span class="td">مدل‌های Pydantic</span></div>
     <div class="trow"><span class="tp">filters/</span><span class="td">Magic Filter F</span></div>
     <div class="trow"><span class="tp">enums/</span><span class="td">۱۶ enum پروتکل: PeerType، ChatType، TypingMode، ...</span></div>
+    <div class="trow"><span class="tp">resilience.py</span><span class="td">RetryPolicy، CircuitBreaker، RequestQueue، ResilientCaller</span></div>
     <div class="trow"><span class="tp">utils/</span><span class="td">برش متن، شناسه، لینک، int64، Throttle، CallbackData</span></div>
     <div class="trow"><span class="tp">fsm/</span><span class="td">State، StatesGroup، FSMContext</span></div>
     <div class="trow"><span class="tp">storage/</span><span class="td">Memory، SQLite</span></div>
