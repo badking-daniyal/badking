@@ -730,13 +730,87 @@ badking/
 - **شماره فیلدهای پروتکل داخلی، رسمی نیست.** هیچ‌کس آن‌ها را از بله نگرفته. تفاوت BADKING این است که همه در یک جدول JSON است و با `BADKING_RPC_SCHEMA` بدون آپدیت کتابخانه عوض می‌شود.
 - **اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت»** در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از `retry_after` واقعی سرور یاد می‌گیرند.
 - **Self-bot کامل پیاده‌سازی شده.** ۷۹ RPC با اسکیما و شماره فیلد واقعی (تطابق کامل با کلاینت رسمی بله)، ورود با شماره + کد SMS، تاریخچه، ارسال متن و فایل، واکنش، گروه و کانال، مخاطبین، کیف پول، رویدادها. ۸۸ تست آفلاین.
-- **۶۳۶ تست، همه آفلاین.** هیچ‌کدام به سرور بله وصل نمی‌شوند.
+- **۹۱۵ تست، همه آفلاین.** هیچ‌کدام به سرور بله وصل نمی‌شوند.
+
+---
+
+## مدیریت، رسانه، مهاجرت
+
+سه چیزی که هر ربات جدی لازم دارد و در بیشتر فریمورک‌ها باید خودت بنویسی:
+
+**موتور مدیریت** — اخطار، سکوت، اخراج، فیلتر، با تاریخچه:
+
+```python
+from badking import Moderator, Rule, Action, SQLiteStorage, link_rule
+
+mod = Moderator(bot, storage=SQLiteStorage("moderation.db"), warn_limit=3)
+mod.add_rule(link_rule(Action.WARN))
+mod.add_rule(Rule(name="banned", words=["تبلیغ"], action=Action.DELETE))
+
+@bot.on_message(F.text)
+async def check(message):
+    await mod.inspect(message)
+```
+
+سه اخطار → اخراج خودکار. هر اقدام ثبت می‌شود، پس اگر بپرسند «چرا اخراج
+شدم؟» جواب داری.
+
+**موتور رسانه** — دانلود، آپلود، کش، اعتبارسنجی:
+
+```python
+from badking import MediaEngine, MediaError
+
+engine = MediaEngine(bot, cache_dir=".cache/media", max_size=20 * 1024 * 1024)
+
+@bot.on_message(F.document)
+async def save(message):
+    try:
+        info = await engine.info(message.document.file_id)
+        engine.validate(info)                    # حجم، پسوند، MIME
+        path = await engine.download(message.document.file_id)
+        await message.reply(f"ذخیره شد: {path.name}")
+    except MediaError as exc:
+        await message.reply(str(exc))            # می‌گوید چرا رد شد
+```
+
+`safe_filename()` جلوی `../../etc/passwd` را می‌گیرد. `.exe`، `.sh`، `.bat`
+رد می‌شوند. فایل با MIME ناسازگار رد می‌شود.
+
+**مهاجرت از aiobale** — بدون بازنویسی از صفر:
+
+```bash
+badking migrate . --dry-run    # ببین چه عوض می‌شود
+badking migrate .              # تبدیل، با نسخه پشتیبان .bak
+```
+
+importها، متدها، و **اسم‌ها در بدنه** را عوض می‌کند (وگرنه `NameError`
+می‌گیری). هر چیزی که خودکار نشد، در گزارش می‌آید. حدس نمی‌زند.
+
+---
+
+## چند سرور
+
+اگر ربات را روی دو سرور اجرا کنی، SQLite جواب نمی‌دهد — هر سرور فایل خودش
+را دارد و کاربر وسط مکالمه وضعیتش را گم می‌کند.
+
+```python
+from badking import RedisStorage
+
+storage = RedisStorage("redis://localhost:6379/0", ttl=3600, prefix="shop:")
+await storage.connect()
+```
+
+`PostgreSQLStorage` هم هست، برای وقتی که مکالمه باید ماه‌ها بماند و
+بخواهی روی آن کوئری بزنی. هیچ‌کدام وابستگی اجباری نیستند: اگر پکیج نصب
+نباشد، خطای روشن با دستور نصب می‌دهند.
 
 ---
 
 ## مستندات
 
 - 🌐 **[docs.badking.ir](https://docs.badking.ir)** — مستندات کامل فارسی
+- 🇬🇧 [`docs/en/README.md`](docs/en/README.md) — English documentation
+- 🇮🇷 [`docs/fa/README.md`](docs/fa/README.md) — مستندات فارسی (نسخه مخزن)
 - 📘 [`docs/bale-api.md`](docs/bale-api.md) — خلاصه مستندات رسمی بله
 - 🗺️ [`docs/roadmap.md`](docs/roadmap.md) — نقشه راه و وضعیت فازها
 - ⚠️ [`badking/hybrid/README.md`](badking/hybrid/README.md) — هشدار self-bot

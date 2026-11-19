@@ -10,11 +10,76 @@
 ## [Unreleased]
 
 ### Planned
-- `RedisStorage` و `PostgreSQLStorage` برای FSM
-- سیستم افزونه (`badking.plugins`)
-- بومی‌سازی (`badking.i18n`) با فارسی و انگلیسی
-- Migration Toolkit برای مهاجرت از aiobale
-- ۲۲ نمونه پروژه کامل
+- انتشار روی PyPI
+- تست زنده self-bot (نیاز به شماره واقعی)
+
+---
+
+## [0.2.0] — 2026-11-19
+
+بستن شکاف‌های طرح. ۹۱۵ تست آفلاین، ۱۷۶ export، ۲۷ نمونه.
+
+### Added
+
+**ذخیره‌سازی پیشرفته**
+- `RedisStorage` — وضعیت FSM روی Redis، با TTL، پیشوند کلید، `health()`،
+  `ttl_left()`، `clear()`. برای اجرا روی چند سرور.
+- `PostgreSQLStorage` — وضعیت روی Postgres، با TTL، `purge_expired()`،
+  `count()`، Connection Pool. نام جدول اعتبارسنجی می‌شود (SQL Injection).
+- هر دو بدون وابستگی اجباری: اگر پکیج نصب نباشد، خطای روشن با دستور نصب
+  می‌دهند، نه `ImportError` گنگ.
+
+**Media Engine** (`badking.media.MediaEngine`)
+- دانلود با پیشرفت، آپلود با تشخیص خودکار نوع، کش بر اساس هش
+- `safe_filename()` — حذف Path Traversal، کاراکتر خطرناک ویندوز، نام بلند
+- `validate_extension()` — فقط پسوندهای مجاز؛ `.exe`، `.sh`، `.bat` رد می‌شوند
+- `check_mime_matches()` — فایل با MIME ناسازگار رد می‌شود
+- `enforce_disk_limit()` — قدیمی‌ترین‌ها پاک می‌شوند
+- `download_many()` با محدودیت هم‌زمانی؛ خطای یکی بقیه را متوقف نمی‌کند
+
+**Moderation Engine** (`badking.moderation.Moderator`)
+- `Rule` با regex، کلمات ممنوع، حداکثر طول/لینک/فایل/منشن
+- اقدام‌ها: اخطار، سکوت، اخراج، لگد، حذف
+- تشدید خودکار: سه اخطار → اخراج
+- لیست سفید و سیاه، معافیت ادمین، تاریخچه در Storage
+- قواعد آماده: `link_rule`، `flood_rule`، `mention_spam_rule`، `word_rule`
+
+**Channel Monitor** (`badking.moderation.ChannelMonitor`)
+- ثبت ورود و خروج، آمار روزانه، رشد خالص، نرخ ریزش
+- چند کانال، چند ادمین، گزارش خوانا
+- پایدار در Storage، بازیابی با `load()`
+
+**Migration Toolkit** (`badking.compat`)
+- `badking migrate` — تبدیل پروژه aiobale بدون بازنویسی
+- importها، متدها، و **اسم‌ها در بدنه** (وگرنه `NameError`)
+- هر چیزی که خودکار نشد، در گزارش می‌آید. حدس نمی‌زند.
+- `--dry-run`، نسخه پشتیبان `.bak`، خروجی JSON
+- BOM ویندوز تحمل می‌شود
+
+**مستندات دو زبانه**
+- `docs/fa/README.md` و `docs/en/README.md`
+- تست `tests/test_docs.py`: تعداد بخش‌ها، ساختار کد، هر import در مستندات
+  باید واقعاً در کتابخانه باشد، هر دستور CLI باید واقعاً وجود داشته باشد
+
+**نمونه‌های جدید**
+- `23_moderation.py` — مدیریت گروه با تاریخچه
+- `24_migrate.py` — مهاجرت از aiobale
+- `25_media.py` — دانلود، آپلود، کش
+- `26_redis.py` — چند سرور با Redis
+- `27_plugins.py` — افزونه سفارشی و دو زبان
+
+### Changed
+- `build_parser()` از `main()` جدا شد تا CLI بدون اجرا تست شود
+- `pyproject.toml`: extras `postgres` و `all`، نویسنده واقعی
+- `Rule`: پیش‌فرض محدودیت‌ها `-1` شد تا `max_files=0` («هیچ فایلی مجاز
+  نیست») از «این شرط را نگذار» قابل تفکیک باشد
+
+### Fixed
+- `Moderator._call` کوارگ نمی‌پذیرفت؛ `until_date` سکوت اعمال نمی‌شد
+- `daily_breakdown` رویدادهای لبه «همین حالا» را جا می‌انداخت
+- `Path.write_text(newline=...)` روی پایتون ۳.۹ کار نمی‌کند
+- `Callable[[int, int], Awaitable[None] | None]` روی ۳.۹ در زمان اجرا خطا
+  می‌داد؛ به `Union` تغییر کرد
 
 ---
 

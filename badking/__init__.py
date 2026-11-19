@@ -11,7 +11,7 @@ BADKING — فریمورک همه‌کاره و AI-Native برای بازوها�
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "__version__",
     "Bot",
@@ -103,6 +103,26 @@ from .utils import (
 )
 from .utils.callback_data import CallbackData, CallbackFilter
 
+# مهاجرت از aiobale
+from .compat import MigrationReport, analyze, migrate_file, migrate_source, migration_summary
+
+# مدیریت و نظارت
+from .moderation import (
+    Action, ChannelMonitor, ChannelStats, MemberEvent,
+    ModerationError, Moderator, Rule, Violation,
+    flood_rule, link_rule, mention_spam_rule, word_rule,
+)
+
+# رسانه
+from .media import MediaEngine, MediaError, MediaInfo, safe_filename, validate_extension
+
+# Storage پیشرفته
+from .storage import PostgreSQLStorage, RedisStorage
+
+# افزونه و بومی‌سازی
+from .plugins import Plugin, PluginError, PluginManager, StatsPlugin, LogPlugin, RatePlugin
+from .i18n import Catalog, TranslationError, Translator, default_translator
+
 # موتور تاب‌آوری
 from .resilience import (
     Backoff,
@@ -188,6 +208,14 @@ __all__ += [
     "normalize_phone",
     "RetryPolicy", "Backoff", "CircuitBreaker", "CircuitState",
     "RequestQueue", "ResilientCaller",
+    "Plugin", "PluginError", "PluginManager", "StatsPlugin", "LogPlugin", "RatePlugin",
+    "Catalog", "TranslationError", "Translator", "default_translator",
+    "Action", "ChannelMonitor", "ChannelStats", "MemberEvent",
+    "ModerationError", "Moderator", "Rule", "Violation",
+    "flood_rule", "link_rule", "mention_spam_rule", "word_rule",
+    "MediaEngine", "MediaInfo", "safe_filename", "validate_extension",
+    "RedisStorage", "PostgreSQLStorage",
+    "MigrationReport", "analyze", "migrate_file", "migrate_source", "migration_summary",
     "BADKINGError", "AuthenticationError", "ChatNotFoundError", "ChatWriteForbiddenError",
     "CircuitOpenError", "CodeInvalidError", "ConfigError", "ConnectionLostError",
     "DecodeError", "DnsError", "DownloadFailedError", "EncodeError", "FileTooLargeError",

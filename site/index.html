@@ -264,6 +264,15 @@ a.inl:hover{border-bottom-color:var(--accent)}
 }
 
 /* ---------- code ---------- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:22px 0}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:20px;transition:.22s;
+}
+.card:hover{border-color:rgba(var(--glow),.34)}
+.card h3{margin-top:0;margin-bottom:9px}
+.card p.muted{color:var(--muted);font-size:14px;line-height:1.85;margin-bottom:4px}
+@media(max-width:920px){.grid2{grid-template-columns:1fr}}
 .codebox{
   background:var(--code);border:1px solid var(--line2);border-radius:13px;
   overflow:hidden;margin:16px 0 22px;
@@ -445,6 +454,7 @@ footer{
       <a href="#selfbot">Self-bot</a>
       <a href="#layers">لایه‌ها</a>
       <a href="#compare">مقایسه</a>
+      <a href="#ops">مدیریت</a>
       <a href="#limits">مرزها</a>
       <a class="gh" href="https://github.com/badking-daniyal/badking" target="_blank" rel="noopener">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -507,9 +517,9 @@ footer{
   </div>
 
   <div class="stats">
-    <div class="stat"><b data-count="636">۰</b><span>تست پاس</span></div>
-    <div class="stat"><b data-count="143">۰</b><span>صادرات</span></div>
-    <div class="stat"><b data-count="89">۰</b><span>ماژول</span></div>
+    <div class="stat"><b data-count="915">۰</b><span>تست پاس</span></div>
+    <div class="stat"><b data-count="176">۰</b><span>صادرات</span></div>
+    <div class="stat"><b data-count="96">۰</b><span>ماژول</span></div>
     <div class="stat"><b data-count="3">۰</b><span>لایه دسترسی</span></div>
     <div class="stat"><b>MIT</b><span>مجوز</span></div>
   </div>
@@ -795,7 +805,7 @@ badking run             <span class="cm"># ⁦اجرا⁩</span></code></pre>
     <h2>نمونه‌های واقعی</h2>
   </div>
   <p class="sub rv">هر نمونه کد کامل و قابل اجراست، نه شبه‌کد.</p>
-  <p class="rv"><b>۲۲ نمونه اجراشدنی</b> در <code>examples/</code>: از ربات سه‌خطی تا ربات تولیدی با خاموشی ایمن و متریک. هر فایل با <code>python</code> اجرا می‌شود و در بالای خودش می‌گوید چه لازم دارد. همه از نظر نحوی و import تست می‌شوند.</p>
+  <p class="rv"><b>۲۷ نمونه اجراشدنی</b> در <code>examples/</code>: از ربات سه‌خطی تا ربات تولیدی با خاموشی ایمن و متریک. هر فایل با <code>python</code> اجرا می‌شود و در بالای خودش می‌گوید چه لازم دارد. همه از نظر نحوی و import تست می‌شوند.</p>
 
   <h3 id="conversation" class="rv"><span class="num">۱</span> ویزارد چندمرحله‌ای</h3>
   <p class="rv">پرسش‌وپاسخ خطی بدون دست‌وپنجه نرم کردن با FSM:</p>
@@ -1010,8 +1020,101 @@ data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123
       <tr><td>Observability (Prometheus)</td><td class="no">✗</td><td class="yes">✓</td></tr>
       <tr><td>Docker + CI آماده</td><td class="no">✗</td><td class="yes">✓</td></tr>
       <tr><td>مستندات فارسی</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>Redis / PostgreSQL برای FSM</td><td class="no">✗ فقط حافظه و SQLite</td><td class="yes">✓ چهار بک‌اند + TTL</td></tr>
+      <tr><td>موتور مدیریت (اخطار، سکوت، اخراج)</td><td class="no">✗</td><td class="yes">✓ + تاریخچه</td></tr>
+      <tr><td>نظارت کانال (ورود/خروج، آمار)</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>اعتبارسنجی فایل (Path Traversal، MIME)</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>مهاجرت خودکار از aiobale</td><td class="no">✗</td><td class="yes">✓ <code>badking migrate</code></td></tr>
+      <tr><td>افزونه (Plugin) با چرخه عمر</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      <tr><td>بومی‌سازی (فارسی/انگلیسی)</td><td class="no">✗</td><td class="yes">✓</td></tr>
     </tbody>
   </table>
+  </div>
+</section>
+
+<section id="ops">
+  <div class="sec-head rv">
+    <div class="eyebrow">Operations</div>
+    <h2>مدیریت، رسانه، مهاجرت</h2>
+  </div>
+  <p class="sub rv">سه چیزی که هر ربات جدی لازم دارد و در بیشتر فریمورک‌ها باید خودت بنویسی.</p>
+
+  <div class="grid2 rv">
+    <div class="card">
+      <h3>موتور مدیریت</h3>
+      <p class="muted">اخطار، سکوت، اخراج، فیلتر کلمه و لینک. سه اخطار → اخراج خودکار. هر اقدام ثبت می‌شود، پس اگر بپرسند «چرا اخراج شدم؟» جواب داری.</p>
+      <div class="codebox rv">
+        <div class="cb-head"><span class="dot"></span><span class="cb-name">moderation.py</span><button class="copy">کپی</button></div>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> Moderator, Rule, Action, link_rule
+
+mod = Moderator(bot, storage=SQLiteStorage(<span class="st">"mod.db"</span>), warn_limit=<span class="nm">3</span>)
+mod.add_rule(link_rule(Action.WARN))
+mod.add_rule(Rule(name=<span class="st">"banned"</span>, words=[<span class="st">"تبلیغ"</span>], action=Action.DELETE))
+
+<span class="at">@</span>bot.on_message(F.text)
+<span class="kw">async def</span> <span class="fn">check</span>(message):
+    <span class="kw">await</span> mod.inspect(message)</code></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>موتور رسانه</h3>
+      <p class="muted">دانلود با پیشرفت، آپلود با تشخیص نوع، کش بر اساس هش. <code>../../etc/passwd</code> به نام فایل تبدیل نمی‌شود. <code>.exe</code> و <code>.sh</code> رد می‌شوند.</p>
+      <div class="codebox rv">
+        <div class="cb-head"><span class="dot"></span><span class="cb-name">media.py</span><button class="copy">کپی</button></div>
+<pre><code>engine = MediaEngine(bot, cache_dir=<span class="st">".cache/media"</span>)
+
+<span class="at">@</span>bot.on_message(F.document)
+<span class="kw">async def</span> <span class="fn">save</span>(message):
+    info = <span class="kw">await</span> engine.info(message.document.file_id)
+    engine.validate(info)          <span class="cm"># &#8294;حجم، پسوند، MIME&#8300;</span>
+    path = <span class="kw">await</span> engine.download(message.document.file_id)
+    <span class="kw">await</span> message.reply(<span class="st">"ذخیره شد"</span>)</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card rv" style="margin-top:18px">
+    <h3>مهاجرت از aiobale</h3>
+    <p class="muted">importها، متدها، و <b>اسم‌ها در بدنه</b> را عوض می‌کند — وگرنه <code>NameError</code> می‌گیری. هر چیزی که خودکار نشد، در گزارش می‌آید. حدس نمی‌زند.</p>
+    <div class="codebox rv">
+      <div class="cb-head"><span class="dot"></span><span class="cb-name">terminal</span><button class="copy">کپی</button></div>
+<pre><code>badking migrate . --dry-run    <span class="cm"># &#8294;ببین چه عوض می‌شود، چیزی نوشته نمی‌شود&#8300;</span>
+badking migrate .              <span class="cm"># &#8294;تبدیل، با نسخه پشتیبان .bak&#8300;</span></code></pre>
+    </div>
+  </div>
+
+  <div class="grid2 rv" style="margin-top:18px">
+    <div class="card">
+      <h3>چند سرور</h3>
+      <p class="muted">SQLite روی دو سرور جواب نمی‌دهد — هر سرور فایل خودش را دارد و کاربر وسط مکالمه وضعیتش را گم می‌کند.</p>
+      <div class="codebox rv">
+        <div class="cb-head"><span class="dot"></span><span class="cb-name">redis.py</span><button class="copy">کپی</button></div>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> RedisStorage
+
+storage = RedisStorage(
+    <span class="st">"redis://localhost:6379/0"</span>,
+    ttl=<span class="nm">3600</span>,          <span class="cm"># &#8294;مکالمه رهاشده خودش پاک می‌شود&#8300;</span>
+    prefix=<span class="st">"shop:"</span>,      <span class="cm"># &#8294;چند ربات روی یک Redis&#8300;</span>
+)
+<span class="kw">await</span> storage.connect()</code></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>نظارت کانال</h3>
+      <p class="muted">ورود، خروج، رشد خالص، نرخ ریزش، تفکیک روزانه. چند کانال، چند ادمین. آمار بر اساس چیزی است که واقعاً دیدیم، نه حدس.</p>
+      <div class="codebox rv">
+        <div class="cb-head"><span class="dot"></span><span class="cb-name">monitor.py</span><button class="copy">کپی</button></div>
+<pre><code><span class="kw">from</span> badking <span class="kw">import</span> ChannelMonitor
+
+monitor = ChannelMonitor(storage=SQLiteStorage(<span class="st">"monitor.db"</span>))
+monitor.watch(<span class="nm">-1001234567890</span>, admin_id=<span class="nm">111</span>, name=<span class="st">"فروشگاه"</span>)
+
+stats = monitor.stats(<span class="nm">-1001234567890</span>, days=<span class="nm">7</span>)
+<span class="fn">print</span>(stats.summary())   <span class="cm"># &#8294;ورود، خروج، خالص&#8300;</span></code></pre>
+      </div>
+    </div>
   </div>
 </section>
 

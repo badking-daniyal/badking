@@ -336,7 +336,44 @@ def cmd_test(args) -> int:
     return run_test(args.extra)
 
 
-def main(argv: list[str] | None = None) -> int:
+def cmd_migrate(args) -> int:
+    """مهاجرت از aiobale."""
+    import json
+    from pathlib import Path
+
+    from ..compat import migrate_directory, migrate_file, migration_summary
+
+    path = Path(args.path)
+    dry_run = bool(args.dry_run)
+    backup = not args.no_backup
+
+    if path.is_file():
+        report = migrate_file(path, dry_run=dry_run, backup=backup)
+        reports = [report]
+    elif path.is_dir():
+        reports = migrate_directory(path, dry_run=dry_run, backup=backup)
+    else:
+        print(f"مسیر پیدا نشد: {path}")
+        return 1
+
+    if args.json:
+        print(json.dumps([r.to_dict() for r in reports], ensure_ascii=False, indent=2))
+    else:
+        for report in reports:
+            if report.changes or report.needs_manual_work or not report.ok:
+                print(report.summary())
+                print()
+        print(migration_summary(reports))
+
+        if dry_run:
+            print("\n(حالت آزمایشی — چیزی نوشته نشد)")
+
+    failed = sum(1 for r in reports if not r.ok)
+    return 1 if failed else 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """پارسر CLI. جدا است تا بشود بدون اجرا تستش کرد."""
     parser = argparse.ArgumentParser(prog="badking", description="BADKING — فریمورک ربات بله")
     sub = parser.add_subparsers(dest="cmd")
 
@@ -401,6 +438,19 @@ def main(argv: list[str] | None = None) -> int:
     p_test.add_argument("extra", nargs="*", help="آرگومان‌های اضافه برای pytest")
     p_test.set_defaults(func=cmd_test)
 
+    p_mig = sub.add_parser("migrate", help="مهاجرت پروژه از aiobale")
+    p_mig.add_argument("path", nargs="?", default=".", help="فایل یا پوشه")
+    p_mig.add_argument("--dry-run", action="store_true", help="فقط گزارش، بدون تغییر")
+    p_mig.add_argument("--no-backup", action="store_true", help="نسخه پشتیبان نساز")
+    p_mig.add_argument("--json", action="store_true", help="خروجی JSON")
+    p_mig.set_defaults(func=cmd_migrate)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """نقطه ورود CLI."""
+    parser = build_parser()
     args = parser.parse_args(argv)
     if not hasattr(args, "func"):
         parser.print_help()
