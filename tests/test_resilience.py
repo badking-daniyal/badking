@@ -374,29 +374,40 @@ class TestCircuitBreaker:
         with pytest.raises(CircuitOpenError):
             asyncio.get_event_loop().run_until_complete(b.call(anything))
 
+    @staticmethod
+    def _wait_for_half_open(breaker, timeout=2.0):
+        """صبر می‌کند تا مدار به half-open برسد.
+
+        time.sleep با مقدار ثابت روی ویندوز شکننده است: دقت ساعت سیستم
+        ۱۵.۶ میلی‌ثانیه است، پس sleep(0.02) ممکن است واقعاً ۰.۰۲ ثانیه
+        نباشد. شرط را می‌پاییم، نه زمان را.
+        """
+        import time
+
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if breaker.state is CircuitState.HALF_OPEN:
+                return True
+            time.sleep(0.005)
+        return False
+
     def test_half_open_after_cooldown(self):
-        b = CircuitBreaker(failure_threshold=1, cooldown=0.05)
+        b = CircuitBreaker(failure_threshold=1, cooldown=0.02)
         b.record_failure()
         assert b.state is CircuitState.OPEN
-        import time
-        time.sleep(0.06)
-        assert b.state is CircuitState.HALF_OPEN
+        assert self._wait_for_half_open(b), "مدار به half-open نرسید"
 
     def test_half_open_closes_on_success(self):
-        b = CircuitBreaker(failure_threshold=1, cooldown=0.01, success_threshold=1)
+        b = CircuitBreaker(failure_threshold=1, cooldown=0.02, success_threshold=1)
         b.record_failure()
-        import time
-        time.sleep(0.02)
-        assert b.state is CircuitState.HALF_OPEN
+        assert self._wait_for_half_open(b)
         b.record_success()
         assert b.state is CircuitState.CLOSED
 
     def test_half_open_reopens_on_failure(self):
-        b = CircuitBreaker(failure_threshold=1, cooldown=0.01)
+        b = CircuitBreaker(failure_threshold=1, cooldown=0.02)
         b.record_failure()
-        import time
-        time.sleep(0.02)
-        assert b.state is CircuitState.HALF_OPEN
+        assert self._wait_for_half_open(b)
         b.record_failure()
         assert b.state is CircuitState.OPEN
 

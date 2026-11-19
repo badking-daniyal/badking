@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -59,7 +60,15 @@ async def test_fsm_timeout():
     ctx = FSMContext(storage, "1")
     await ctx.set_state(OrderForm.item)
     assert not await ctx.is_expired(timeout_seconds=100)
-    await asyncio.sleep(0.01)
+
+    # روی ویندوز دقت time.time() حدود ۱۵.۶ میلی‌ثانیه است، پس
+    # sleep(0.01) ممکن است هیچ تغییری در timestamp ایجاد نکند.
+    # شرط را می‌پاییم، نه زمان را.
+    deadline = time.monotonic() + 2.0
+    while time.monotonic() < deadline:
+        if await ctx.is_expired(timeout_seconds=0.001):
+            break
+        await asyncio.sleep(0.01)
     assert await ctx.is_expired(timeout_seconds=0.001)
 
 
