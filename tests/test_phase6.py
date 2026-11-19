@@ -62,7 +62,13 @@ async def test_scheduler_one_shot():
     s = Scheduler()
     s.schedule(job, delay=0.01, name="report")
     await s.start()
-    await asyncio.sleep(0.1)
+
+    # انتظار شرطی، نه ثابت زمانی: در مجموعه شلوغ، ۰.۱ ثانیه کافی نیست.
+    for _ in range(100):
+        if fired:
+            break
+        await asyncio.sleep(0.02)
+
     await s.stop()
     assert fired == ["report"]
 

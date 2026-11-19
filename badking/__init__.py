@@ -60,7 +60,48 @@ from .adapters import AdapterRegistry, BaleAdapter
 
 # مکالمه و صفحهبندی
 from .conversation import Conversation, ConversationManager, ConversationTimeout
-from .keyboards import KeyboardPaginator
+from .keyboards import (
+    InlineKeyboardBuilder,
+    KeyboardPaginator,
+    ReplyKeyboardBuilder,
+)
+
+# enum های پروتکل
+from .enums import (
+    AuthErrors,
+    ChatType,
+    GiftOpenning,
+    GivingType,
+    GroupType,
+    ListLoadMode,
+    PeerSource,
+    PeerType,
+    PrivacyMode,
+    ReportKind,
+    Restriction,
+    SendCodeType,
+    SendType,
+    TypingMode,
+)
+
+# ابزارها
+from .utils import (
+    Throttle,
+    create_progress_bar,
+    decode_int64_list,
+    encode_int64_list,
+    extract_join_token,
+    extract_username,
+    format_bytes,
+    generate_id,
+    normalize_phone,
+    random_id,
+    smart_split_text,
+    split_by_length,
+    to_english_digits,
+    to_persian_digits,
+)
+from .utils.callback_data import CallbackData, CallbackFilter
 
 # زیرساخت
 from .connectors import Auth, Connector
@@ -84,6 +125,14 @@ __all__ += [
     "AIAssistant", "EchoLLM", "IntentRouter", "Memory", "OpenAICompatibleLLM", "SimpleRAG",
     "Flow", "AdapterRegistry", "BaleAdapter",
     "Conversation", "ConversationManager", "ConversationTimeout", "KeyboardPaginator",
+    "InlineKeyboardBuilder", "ReplyKeyboardBuilder", "CallbackData", "CallbackFilter",
+    "PeerType", "ChatType", "GroupType", "ListLoadMode", "TypingMode", "SendType",
+    "PrivacyMode", "Restriction", "ReportKind", "GivingType", "GiftOpenning",
+    "PeerSource", "SendCodeType", "AuthErrors",
+    "Throttle", "smart_split_text", "split_by_length", "generate_id", "random_id",
+    "extract_join_token", "extract_username", "decode_int64_list", "encode_int64_list",
+    "format_bytes", "create_progress_bar", "to_persian_digits", "to_english_digits",
+    "normalize_phone",
     "Auth", "Connector", "JobQueue", "Scheduler", "EventBus", "Store", "OCR", "Voice",
     "Metrics", "metrics", "AntiSpam", "AuditLog", "Captcha", "RBAC", "Secrets",
     "DryBot", "Health", "logging_mw", "metrics_mw", "antispam_mw", "KNOWN_METHODS",

@@ -381,6 +381,117 @@ badking run             # اجرا
 
 ---
 
+## ابزارهای روزمره
+
+### Enum های پروتکل
+
+هر عددی که در RPC معنا دارد، یک نام دارد. دیگر `typing_type=5` نمی‌نویسی:
+
+```python
+from badking import PeerType, ChatType, TypingMode, SendType, ListLoadMode
+
+await bot.send_typing(peer, mode=TypingMode.SENDINGPHOTO)
+await bot.load_history(peer, load_mode=ListLoadMode.BACKWARD)
+```
+
+۱۶ enum: `PeerType`، `ChatType`، `GroupType`، `ListLoadMode`، `TypingMode`،
+`SendType`، `PrivacyMode`، `Restriction`، `ReportKind`، `GivingType`،
+`GiftOpenning`، `PeerSource`، `SendCodeType`، `AuthErrors`.
+
+### CallbackData — داده دکمه با تایپ
+
+رشته `"product:view:10"` را دستی پارس نکن:
+
+```python
+from badking import CallbackData
+
+class ProductCB(CallbackData, prefix="product"):
+    action: str
+    product_id: int
+
+# ساخت دکمه
+btn = ProductCB(action="view", product_id=10).pack()   # "product:view:10"
+
+# در هندلر
+@dp.callback_query(ProductCB.filter(action="view"))
+async def on_view(cq, cb: ProductCB):
+    print(cb.product_id)   # 10 — int، نه رشته
+```
+
+بدون pydantic. اگر بله فرمت را عوض کند، فقط `pack`/`unpack` تغییر می‌کند.
+
+### کیبورد
+
+```python
+from badking import InlineKeyboardBuilder, ReplyKeyboardBuilder
+
+kb = (
+    InlineKeyboardBuilder()
+    .button("سایت", url="https://badking.ir")
+    .button("خرید", callback_data="buy:1")
+    .button("کپی کد", copy_text="CODE123")
+    .button("مینی‌اپ", web_app="https://app.badking.ir")
+    .adjust(2)
+    .as_markup()
+)
+
+reply = (
+    ReplyKeyboardBuilder()
+    .button("ارسال شماره", request_contact=True)
+    .button("موقعیت", request_location=True)
+    .adjust(2)
+    .as_markup()
+)
+```
+
+### متن و شماره
+
+```python
+from badking import smart_split_text, normalize_phone, to_persian_digits
+
+# پیام بلند را به تکه‌های مجاز می‌شکند، بدون بریدن کلمه
+for part in smart_split_text(long_text, max_length=4000):
+    await bot.send_message(peer, part)
+
+# شماره فارسی یا با فاصله را به فرم بله درمی‌آورد
+normalize_phone("۰۹۱۲۳۴۵۶۷۸۹")      # "989123456789"
+normalize_phone("+98 912 345 6789")  # "989123456789"
+
+to_persian_digits(1234)   # "۱۲۳۴"
+```
+
+### ارسال انبوه با محدودیت نرخ
+
+```python
+from badking import Throttle
+
+throttle = Throttle(rate=0.05, max_retries=3)   # ۲۰ در ثانیه
+for chat_id in targets:
+    await throttle.run(bot.send_message, chat_id, "سلام")
+```
+
+### آپلود با نوار پیشرفت
+
+```python
+from badking import create_progress_bar
+
+await bot.upload_file(
+    "video.mp4",
+    progress_callback=create_progress_bar("آپلود"),
+)
+```
+
+### لینک دعوت
+
+```python
+from badking import extract_join_token, extract_username
+
+extract_join_token("https://ble.ir/join/AbC123")  # "AbC123"
+extract_username("@daniyal")                      # "daniyal"
+```
+
+---
+
 ## سه لایه دسترسی
 
 | لایه | مخاطب | ابزار |
@@ -398,11 +509,16 @@ badking run             # اجرا
 | قابلیت | aiobale | BADKING |
 |---|---|---|
 | توکن رسمی @botfather | ❌ (لاگین شماره) | ✅ |
-| Self-bot / Internal API | ✅ ۷۹ متد | ✅ ۷۹ متد + `raw_call` + `probe` |
-| اسکیما قابل override بدون آپدیت | ❌ | ✅ |
+| Self-bot / Internal API | ✅ ۷۹ متد | ✅ ۷۹ متد + ۳ در اضافه |
+| اسکیما قابل override بدون آپدیت | ❌ | ✅ یک جدول JSON |
 | صدا زدن متد ناشناخته (بدون اسکیما) | ❌ | ✅ `raw_call` |
 | کشف متد جدید روی سرور | ❌ | ✅ `probe` |
 | `describe` / `search` روی RPC ها | ❌ | ✅ |
+| Enum های پروتکل | ✅ ۱۶ | ✅ ۱۶ + نام‌های جایگزین |
+| CallbackData تایپ‌دار | ✅ pydantic | ✅ بدون وابستگی |
+| KeyboardPaginator | ✅ | ✅ + `parse()` |
+| InlineKeyboardBuilder | ✅ | ✅ + `web_app` |
+| نرمال‌سازی شماره فارسی | ❌ | ✅ ارقام فارسی/عربی |
 | FSM + SQLite | ✅ | ✅ |
 | Conversation (ویزارد) | ✅ | ✅ |
 | KeyboardPaginator | ✅ | ✅ |
@@ -429,6 +545,8 @@ badking/
 ├── core/           Bot، Dispatcher، Router، خطاها
 ├── types/          مدل‌های Pydantic (Message، Update، Keyboard، ...)
 ├── filters/        Magic Filter F
+├── enums/          ۱۶ enum پروتکل (PeerType، ChatType، TypingMode، ...)
+├── utils/          برش متن، شناسه، لینک، int64، Throttle، CallbackData
 ├── fsm/            State، StatesGroup، FSMContext
 ├── storage/        Memory، SQLite
 ├── conversation/   ویزارد پرسش‌وپاسخ
@@ -467,6 +585,7 @@ badking/
 - **شماره فیلدهای پروتکل داخلی، رسمی نیست.** هیچ‌کس آن‌ها را از بله نگرفته. تفاوت BADKING این است که همه در یک جدول JSON است و با `BADKING_RPC_SCHEMA` بدون آپدیت کتابخانه عوض می‌شود.
 - **اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت»** در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از `retry_after` واقعی سرور یاد می‌گیرند.
 - **Self-bot کامل پیاده‌سازی شده.** ۷۹ RPC با اسکیما و شماره فیلد واقعی (تطابق کامل با کلاینت رسمی بله)، ورود با شماره + کد SMS، تاریخچه، ارسال متن و فایل، واکنش، گروه و کانال، مخاطبین، کیف پول، رویدادها. ۸۸ تست آفلاین.
+- **۲۷۳ تست، همه آفلاین.** هیچ‌کدام به سرور بله وصل نمی‌شوند.
 
 ---
 

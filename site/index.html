@@ -486,7 +486,7 @@ footer{
 <div class="hero" id="intro">
   <div class="hero-grid">
   <div class="hero-copy">
-  <div class="pill"><span class="dot"></span> نسخه ۰.۱.۰ — ۱۸۶ تست پاس‌شده</div>
+  <div class="pill"><span class="dot"></span> نسخه ۰.۱.۰ — ۲۷۳ تست پاس‌شده</div>
   <h1>ربات بله بساز.<br><span class="grad">بدون محدودیت.</span></h1>
   <p class="lead">
     فریمورک همه کاره، async و <b>AI-Native</b> برای بله. از کسی که کد بلد نیست تا مهندسی که به RPC خام نیاز دارد — سه لایه دسترسی، همه باز.
@@ -507,9 +507,9 @@ footer{
   </div>
 
   <div class="stats">
-    <div class="stat"><b data-count="186">۰</b><span>تست پاس</span></div>
-    <div class="stat"><b data-count="62">۰</b><span>صادرات</span></div>
-    <div class="stat"><b data-count="76">۰</b><span>ماژول</span></div>
+    <div class="stat"><b data-count="273">۰</b><span>تست پاس</span></div>
+    <div class="stat"><b data-count="98">۰</b><span>صادرات</span></div>
+    <div class="stat"><b data-count="87">۰</b><span>ماژول</span></div>
     <div class="stat"><b data-count="3">۰</b><span>لایه دسترسی</span></div>
     <div class="stat"><b>MIT</b><span>مجوز</span></div>
   </div>
@@ -978,10 +978,18 @@ data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123
     <thead><tr><th>قابلیت</th><th>aiobale</th><th>BADKING</th></tr></thead>
     <tbody>
       <tr><td>توکن رسمی @botfather</td><td class="no">✗</td><td class="yes">✓</td></tr>
-      <tr><td>Self-bot / Internal API</td><td class="yes">✓ کامل</td><td class="yes">✓ کامل + قابل override</td></tr>
+      <tr><td>Self-bot / Internal API</td><td class="yes">✓ ۷۹ متد</td><td class="yes">✓ ۷۹ متد + ۳ در اضافه</td></tr>
+      <tr><td>صدا زدن متد ناشناخته (بدون اسکیما)</td><td class="no">✗</td><td class="yes">✓ <code>raw_call</code></td></tr>
+      <tr><td>کشف متد جدید روی سرور</td><td class="no">✗</td><td class="yes">✓ <code>probe</code></td></tr>
+      <tr><td>اسکیمای RPC قابل override</td><td class="no">✗</td><td class="yes">✓ یک جدول JSON</td></tr>
+      <tr><td>Enum های پروتکل (۱۶ عدد)</td><td class="yes">✓</td><td class="yes">✓ + نام‌های جایگزین</td></tr>
+      <tr><td>CallbackData تایپ‌دار</td><td class="yes">✓ (pydantic)</td><td class="yes">✓ بدون وابستگی</td></tr>
+      <tr><td>KeyboardPaginator</td><td class="yes">✓</td><td class="yes">✓ + <code>parse()</code></td></tr>
+      <tr><td>InlineKeyboardBuilder</td><td class="yes">✓</td><td class="yes">✓ + web_app</td></tr>
+      <tr><td>برش هوشمند متن بلند</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td>نرمال‌سازی شماره فارسی</td><td class="no">✗</td><td class="yes">✓ ارقام فارسی/عربی</td></tr>
       <tr><td>FSM + SQLite</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>Conversation (ویزارد)</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td>KeyboardPaginator</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>Magic Filter F</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>Middleware + Rate Limit</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>Webhook Server</td><td class="yes">✓</td><td class="yes">✓</td></tr>
@@ -1005,11 +1013,13 @@ data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123
     <div class="eyebrow">Structure</div>
     <h2>ساختار پروژه</h2>
   </div>
-  <p class="sub rv">۷۶ ماژول، هر کدام یک مسئولیت.</p>
+  <p class="sub rv">۸۷ ماژول، هر کدام یک مسئولیت.</p>
   <div class="tree rv">
     <div class="trow"><span class="tp">core/</span><span class="td">Bot، Dispatcher، Router، خطاها</span></div>
     <div class="trow"><span class="tp">types/</span><span class="td">مدل‌های Pydantic</span></div>
     <div class="trow"><span class="tp">filters/</span><span class="td">Magic Filter F</span></div>
+    <div class="trow"><span class="tp">enums/</span><span class="td">۱۶ enum پروتکل: PeerType، ChatType، TypingMode، ...</span></div>
+    <div class="trow"><span class="tp">utils/</span><span class="td">برش متن، شناسه، لینک، int64، Throttle، CallbackData</span></div>
     <div class="trow"><span class="tp">fsm/</span><span class="td">State، StatesGroup، FSMContext</span></div>
     <div class="trow"><span class="tp">storage/</span><span class="td">Memory، SQLite</span></div>
     <div class="trow"><span class="tp">conversation/</span><span class="td">ویزارد پرسش‌وپاسخ</span></div>
