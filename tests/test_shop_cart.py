@@ -16,7 +16,11 @@ sys.path.insert(0, str(ROOT / "examples"))
 from badking import Bot  # noqa: E402
 from badking.types import Update  # noqa: E402
 from mock_server import BaleMock  # noqa: E402
-from shop_bot import build_dispatcher, cart_text  # noqa: E402
+from importlib import import_module
+shop_bot = import_module("22_shop_full")
+build_dispatcher = shop_bot.build_dispatcher
+cart_text = shop_bot.cart_text
+# build_dispatcher, cart_text  # noqa: E402
 
 
 def cb(data: str, uid: int = 42) -> Update:
