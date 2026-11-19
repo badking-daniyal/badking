@@ -9,37 +9,41 @@ Set-Location "D:\AI\badking"
 
 & $git add -A
 $msg = @"
-feat: protocol enums, utils, keyboard builders, typed CallbackData
+feat: full error hierarchy, resilience engine, and doctor CLI
 
-Closes the remaining gap with aiobale's non-RPC surface, and goes past it
-where the original is thin.
+The two things developers complain about most in existing Bale libraries:
+unclear errors, and no way to diagnose a broken setup. Both addressed.
 
-enums/ (16 files worth, one module):
-  PeerType, ChatType, GroupType, ListLoadMode, TypingMode, SendType,
-  PrivacyMode, Restriction, ReportKind, GivingType, GiftOpenning,
-  PeerSource, SendCodeType, AuthErrors. IntEnum, so they pass straight
-  into field numbers. Alternate spellings from the official client
-  (VOICERECODRING, CHOSINGGIF, CHOSINGEMOJI, GiftOpening) resolve to the
-  same values.
+errors.py - rewritten from 66 lines to a real hierarchy:
+  BADKINGError root with error_code, method, hint, cause, retryable.
+  40+ specific classes across auth, connection, rate limit, permission,
+  message, media, validation, protocol, storage, config.
+  Every class carries a `hint` that says what to DO, not what went wrong.
+  diagnose() produces a report ready to paste into an issue.
+  format_exception() strips tokens and hex secrets before printing.
+  raise_for_response() maps server codes and reads the description text
+  for flood/admin/chat-not-found/message-too-long variants.
+  Legacy names BaleError, BadRequestError, StopPropagation kept so
+  nothing that imported them breaks.
 
-utils/:
-  smart_split_text   split long messages without breaking words
-  generate_id        random_id for CreateGroup / SendMessage
-  extract_join_token / extract_username
-  decode_int64_list / encode_int64_list   raw varint lists from the server
-  Throttle           rate-limited calls with retry
-  create_progress_bar / format_bytes
-  to_persian_digits / to_english_digits / normalize_phone
-  CallbackData       typed button payloads, no pydantic
+resilience.py - new:
+  RetryPolicy   fixed/linear/exponential backoff, jitter, and it refuses
+                to retry non-retryable errors (a bad argument stays bad).
+                Respects server retry_after over its own delay.
+  CircuitBreaker closed/open/half-open, cooldown, success threshold.
+  RequestQueue  concurrency cap + rate cap + max_pending backpressure.
+  ResilientCaller  queue -> breaker -> retry, in that order, so three
+                retries count as one breaker failure, not three.
 
-keyboards/builder.py:
-  InlineKeyboardBuilder with url / callback_data / copy_text / web_app
-  ReplyKeyboardBuilder with request_contact / request_location
+cli/doctor.py - new:
+  badking doctor  checks python, package, optional deps, token, .env,
+                  session file, write access, disk, git, and network.
+                  Prints check marks and a fix hint per failure.
+  badking info    version, exports, RPC count, feature availability.
+  badking check   syntax-checks every .py in a project, skips __pycache__.
+  badking test    runs pytest.
 
-Also fixed a flaky scheduler test that assumed 0.1s was enough under load;
-it now polls for the condition instead of sleeping a fixed time.
-
-273 tests pass, twice in a row, all offline.
+362 tests pass, all offline.
 "@
 & $git commit -m $msg -q
 & $git log --format="%h %an" -1

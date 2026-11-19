@@ -308,6 +308,34 @@ def cmd_rpc(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(args) -> int:
+    """بررسی سلامت محیط."""
+    from .doctor import run_doctor
+
+    return run_doctor(network=not args.no_network, verbose=args.verbose)
+
+
+def cmd_info(args) -> int:
+    """خلاصه نسخه و امکانات."""
+    from .doctor import run_info
+
+    return run_info()
+
+
+def cmd_check(args) -> int:
+    """بررسی نحوی فایل‌های پروژه."""
+    from .doctor import run_check
+
+    return run_check(args.path)
+
+
+def cmd_test(args) -> int:
+    """اجرای تست‌ها."""
+    from .doctor import run_test
+
+    return run_test(args.extra)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="badking", description="BADKING — فریمورک ربات بله")
     sub = parser.add_subparsers(dest="cmd")
@@ -356,6 +384,22 @@ def main(argv: list[str] | None = None) -> int:
     p_rpc.add_argument("--describe", help="نمایش کامل اسکیمای یک متد")
     p_rpc.add_argument("--json", action="store_true", help="خروجی JSON")
     p_rpc.set_defaults(func=cmd_rpc)
+
+    p_doc = sub.add_parser("doctor", help="بررسی سلامت محیط و پیکربندی")
+    p_doc.add_argument("--no-network", action="store_true", help="بدون تست اتصال")
+    p_doc.add_argument("--verbose", action="store_true", help="نمایش راه‌حل‌ها")
+    p_doc.set_defaults(func=cmd_doctor)
+
+    p_info = sub.add_parser("info", help="نسخه، امکانات و محیط")
+    p_info.set_defaults(func=cmd_info)
+
+    p_check = sub.add_parser("check", help="بررسی خطای نحوی فایل‌های پروژه")
+    p_check.add_argument("path", nargs="?", default=".", help="مسیر پروژه")
+    p_check.set_defaults(func=cmd_check)
+
+    p_test = sub.add_parser("test", help="اجرای تست‌ها")
+    p_test.add_argument("extra", nargs="*", help="آرگومان‌های اضافه برای pytest")
+    p_test.set_defaults(func=cmd_test)
 
     args = parser.parse_args(argv)
     if not hasattr(args, "func"):

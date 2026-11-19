@@ -103,6 +103,59 @@ from .utils import (
 )
 from .utils.callback_data import CallbackData, CallbackFilter
 
+# موتور تاب‌آوری
+from .resilience import (
+    Backoff,
+    CircuitBreaker,
+    CircuitState,
+    RequestQueue,
+    ResilientCaller,
+    RetryPolicy,
+)
+
+# خطاها
+from .core.errors import (
+    BADKINGError,
+    AuthenticationError,
+    ChatNotFoundError,
+    ChatWriteForbiddenError,
+    CircuitOpenError,
+    CodeInvalidError,
+    ConfigError,
+    ConnectionLostError,
+    DecodeError,
+    DnsError,
+    DownloadFailedError,
+    EncodeError,
+    FileTooLargeError,
+    FloodWaitError,
+    InvalidPeerError,
+    MediaError,
+    MessageError,
+    MessageNotFoundError,
+    MessageTooLongError,
+    MissingParameterError,
+    MissingTokenError,
+    NotAdminError,
+    PasswordNeededError,
+    PermissionError_,
+    ProtocolError,
+    ReplyNotFoundError,
+    RpcFailedError,
+    SessionError,
+    SessionExpiredError,
+    StorageError,
+    StorageLockedError,
+    TimeoutError_,
+    TlsError,
+    UnknownMethodError,
+    UnsupportedMediaError,
+    UploadFailedError,
+    UserNotFoundError,
+    ValidationError,
+    format_exception,
+)
+
 # زیرساخت
 from .connectors import Auth, Connector
 from .jobs import JobQueue, Scheduler
@@ -133,6 +186,17 @@ __all__ += [
     "extract_join_token", "extract_username", "decode_int64_list", "encode_int64_list",
     "format_bytes", "create_progress_bar", "to_persian_digits", "to_english_digits",
     "normalize_phone",
+    "RetryPolicy", "Backoff", "CircuitBreaker", "CircuitState",
+    "RequestQueue", "ResilientCaller",
+    "BADKINGError", "AuthenticationError", "ChatNotFoundError", "ChatWriteForbiddenError",
+    "CircuitOpenError", "CodeInvalidError", "ConfigError", "ConnectionLostError",
+    "DecodeError", "DnsError", "DownloadFailedError", "EncodeError", "FileTooLargeError",
+    "FloodWaitError", "InvalidPeerError", "MediaError", "MessageError", "MessageNotFoundError",
+    "MessageTooLongError", "MissingParameterError", "MissingTokenError", "NotAdminError",
+    "PasswordNeededError", "PermissionError_", "ProtocolError", "ReplyNotFoundError",
+    "RpcFailedError", "SessionError", "SessionExpiredError", "StorageError", "StorageLockedError",
+    "TimeoutError_", "TlsError", "UnknownMethodError", "UnsupportedMediaError",
+    "UploadFailedError", "UserNotFoundError", "ValidationError", "format_exception",
     "Auth", "Connector", "JobQueue", "Scheduler", "EventBus", "Store", "OCR", "Voice",
     "Metrics", "metrics", "AntiSpam", "AuditLog", "Captcha", "RBAC", "Secrets",
     "DryBot", "Health", "logging_mw", "metrics_mw", "antispam_mw", "KNOWN_METHODS",
