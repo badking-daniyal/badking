@@ -256,6 +256,77 @@ print(data.user.id, data.user.first_name)   # امضا تأیید شد
 
 ---
 
+## Self-bot — اکانت شخصی، نه ربات
+
+این بخش همان چیزی است که aiobale دارد و بیشتر مردم دنبالش هستند: کار با
+اکانت شخصی بله، نه توکن بازو.
+
+```bash
+pip install "badking[hybrid]"
+badking login --phone 09123456789 --session me.session
+```
+
+```python
+from badking import SelfBot
+
+async with SelfBot(session="me.session") as bot:
+    print(await bot.get_me())
+
+    # ارسال از اکانت شخصی
+    await bot.send_message("@my_channel", "سلام از BADKING")
+
+    # تاریخچه کامل
+    async for msg in bot.iter_messages("@my_channel", limit=500):
+        print(msg.date, msg.text)
+
+    # واکنش، حذف، فوروارد، تایپ
+    await bot.react("@my_channel", 12345, "❤")
+    await bot.delete_messages("@my_channel", [12345])
+    await bot.forward_messages("@dest", [12345], from_peer="@src")
+    await bot.send_typing("@my_channel")
+```
+
+رویدادها:
+
+```python
+@bot.on(lambda m: m.text == "/ping")
+async def ping(msg):
+    await msg.reply("pong")
+
+await bot.run_until_disconnected()
+```
+
+هر RPC داخلی، حتی آن‌هایی که آماده نیستند:
+
+```python
+await bot.call("messaging.LoadHistory",
+               peer={"type": 4, "id": 123, "accessHash": 456},
+               date=-1, loadMode=2, limit=20)
+```
+
+**۵۸ RPC** با اسکیما آماده است: پیام، واکنش، گروه، کانال، مخاطبین، وضعیت
+آنلاین، فایل، کیف پول، ربات، جستجو، استیکر، تنظیمات.
+
+```bash
+badking rpc                    # لیست همه
+badking rpc --service wallet   # فقط کیف پول
+```
+
+### اگر بله پروتکل را عوض کرد
+
+شماره فیلدها در یک JSON است، نه پراکنده در کد:
+
+```bash
+export BADKING_RPC_SCHEMA=/path/to/schema.json
+```
+
+بدون آپدیت کتابخانه. این تفاوت اصلی با هر پیاده‌سازی دیگری است.
+
+> ⚠️ **ریسک:** این لایه غیررسمی است. ممکن است اکانتت مسدود شود. با شماره
+> جداگانه کار کن. جزئیات کامل در [`badking/hybrid/README.md`](badking/hybrid/README.md).
+
+---
+
 ## ربات بدون نوشتن کد
 
 ```bash
@@ -300,7 +371,7 @@ badking run             # اجرا
 | قابلیت | aiobale | BADKING |
 |---|---|---|
 | توکن رسمی @botfather | ❌ (لاگین شماره) | ✅ |
-| Self-bot / Internal API | ✅ کامل | ⚠️ فقط چارچوب (بدون transport) |
+| Self-bot / Internal API | ✅ کامل | ✅ کامل + قابل override |
 | FSM + SQLite | ✅ | ✅ |
 | Conversation (ویزارد) | ✅ | ✅ |
 | KeyboardPaginator | ✅ | ✅ |
@@ -362,8 +433,9 @@ badking/
 - **هر کاری API رسمی بله ندهد، با توکن رسمی از هیچ کتابخانه‌ای برنمی‌آید.** نه BADKING، نه aiobale، نه هیچ‌کس دیگر.
 - **تاریخچه کامل پیام‌ها** (قدیمی‌تر از ۲۴ ساعت) با توکن رسمی ممکن نیست. `iter_messages` ما آپدیت‌های موجود را می‌پیماید. برای تاریخچه کامل، لایه hybrid لازم است.
 - **Self-bot ریسک دارد.** لایه `hybrid` پیش‌فرض خاموش است و بدون `ack_risk=True` فعال نمی‌شود. دلیلش: Internal API غیررسمی است، می‌شکند، و می‌تواند اکانت شخصی‌ات را ببندد. ببین [`badking/hybrid/README.md`](badking/hybrid/README.md).
+- **شماره فیلدهای پروتکل داخلی، رسمی نیست.** هیچ‌کس آن‌ها را از بله نگرفته. تفاوت BADKING این است که همه در یک جدول JSON است و با `BADKING_RPC_SCHEMA` بدون آپدیت کتابخانه عوض می‌شود.
 - **اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت»** در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از `retry_after` واقعی سرور یاد می‌گیرند.
-- **پیاده‌سازی کامل RPC داخلی self-bot** (۸۰+ متد) هنوز انجام نشده. رابط و ایزولاسیون آماده است؛ خود RPC به‌عنوان پلاگین جداگانه منتشر می‌شود.
+- **Self-bot کامل پیاده‌سازی شده.** ۵۸ RPC با اسکیما، ورود با شماره + کد SMS، تاریخچه، ارسال از اکانت شخصی، کیف پول، رویدادها. ۷۴ تست آفلاین.
 
 ---
 
@@ -389,7 +461,11 @@ python -m pytest tests/ -q     # 98 passed
 
 ## مشارکت
 
+این پروژه توسط **دانیال شهرکی** ([@badking-daniyal](https://github.com/badking-daniyal)) ساخته و نگهداری می‌شود.
+
 Issue و PR باز است. اگر باگ پیدا کردی، بگو — ممیزی کد بخشی از فرهنگ این پروژه است.
+
+**Contributors:** [badking-daniyal](https://github.com/badking-daniyal)
 
 ---
 

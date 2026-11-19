@@ -87,4 +87,33 @@ __all__ += [
     "Auth", "Connector", "JobQueue", "Scheduler", "EventBus", "Store", "OCR", "Voice",
     "Metrics", "metrics", "AntiSpam", "AuditLog", "Captcha", "RBAC", "Secrets",
     "DryBot", "Health", "logging_mw", "metrics_mw", "antispam_mw", "KNOWN_METHODS",
+    "SelfBot", "HybridPlugin", "SessionStore", "hybrid_warning",
 ]
+
+
+_LAZY_HYBRID = {
+    "SelfBot": "client",
+    "HybridPlugin": "plugin",
+    "HybridDisabledError": "plugin",
+    "SessionStore": "session",
+    "Session": "session",
+    "hybrid_warning": "plugin",
+    "registry": "rpc",
+    "RpcSpec": "rpc",
+    "RpcRegistry": "rpc",
+}
+
+
+def __getattr__(name: str):
+    """بارگذاری تنبل لایه hybrid.
+
+    این کار باعث می‌شود `from badking import SelfBot` کار کند، بدون اینکه
+    نصب بودن websockets برای کسی که فقط ربات رسمی می‌خواهد اجباری شود.
+    """
+    module_name = _LAZY_HYBRID.get(name)
+    if module_name is None:
+        raise AttributeError(f"module 'badking' has no attribute {name!r}")
+    import importlib
+
+    module = importlib.import_module(f".hybrid.{module_name}", __name__)
+    return getattr(module, name)

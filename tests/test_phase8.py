@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -15,7 +16,7 @@ def test_hybrid_disabled_by_default():
     plugin = HybridPlugin()
     assert plugin.enabled is False
     try:
-        plugin.activate()
+        asyncio.get_event_loop().run_until_complete(plugin.activate())
         assert False, "باید خطا میداد"
     except HybridDisabledError:
         pass

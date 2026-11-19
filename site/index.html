@@ -416,7 +416,11 @@ footer{
   *{animation:none!important;transition:none!important}
   .rv{opacity:1;transform:none}
 }
-</style>
+
+    .bcard.selfbot{border-color:rgba(255,92,92,.34);background:linear-gradient(160deg,rgba(255,92,92,.07),rgba(255,255,255,.02))}
+    .bcard.selfbot .bico{filter:drop-shadow(0 0 12px rgba(255,92,92,.5))}
+    .bcard.selfbot .tag{color:#ff8b8b;border-color:rgba(255,92,92,.3)}
+  </style>
 </head>
 <body>
 
@@ -438,6 +442,7 @@ footer{
     <nav>
       <a href="#features">قابلیت‌ها</a>
       <a href="#examples">نمونه‌ها</a>
+      <a href="#selfbot">Self-bot</a>
       <a href="#layers">لایه‌ها</a>
       <a href="#compare">مقایسه</a>
       <a href="#limits">مرزها</a>
@@ -518,13 +523,13 @@ footer{
   <p class="sub rv">Python 3.9 یا بالاتر. بدون وابستگی سنگین، بدون session file.</p>
   <div class="codebox rv">
     <div class="cb-head"><span class="cb-name">terminal</span><button class="copy">کپی</button></div>
-<pre><code><span class="cm"># از PyPI</span>
+<pre><code><span class="cm"># ⁦از PyPI⁩</span>
 pip install badking
 
-<span class="cm"># یا با uv (سریع‌تر)</span>
+<span class="cm"># ⁦یا با uv (سریع‌تر)⁩</span>
 uv pip install badking
 
-<span class="cm"># یا آخرین نسخه توسعه</span>
+<span class="cm"># ⁦یا آخرین نسخه توسعه⁩</span>
 pip install git+https://github.com/badking-daniyal/badking.git</code></pre>
   </div>
   <div class="note rv">
@@ -548,11 +553,11 @@ dp = Dispatcher()
 
 <span class="at">@</span>dp.message(F.text == <span class="st">"/start"</span>)
 <span class="kw">async def</span> <span class="fn">start</span>(message, bot):
-    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"خوش آمدی! 🚀"</span>)
+    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"⁦خوش آمدی!⁩ 🚀"</span>)
 
 <span class="at">@</span>dp.message(F.text)
 <span class="kw">async def</span> <span class="fn">echo</span>(message, bot):
-    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">f"شما گفتید: {message.text}"</span>)
+    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">f"⁦شما گفتید:⁩ {message.text}"</span>)
 
 asyncio.run(bot.polling(dp))</code></pre>
   </div>
@@ -566,6 +571,15 @@ asyncio.run(bot.polling(dp))</code></pre>
   <p class="sub rv">۷۶ ماژول، هر کدام یک مسئولیت. هیچ چیز پنهان نیست.</p>
 
   <div class="bento">
+    <div class="bcard w4 rv selfbot">
+      <div class="bico">👤</div>
+      <h4>Self-bot — کامل، نه چارچوب</h4>
+      <p>اکانت شخصی، نه توکن بازو. ورود با شماره + کد SMS، تاریخچه کامل پیام‌ها،
+      ارسال از اکانت خودت، واکنش، گروه، کانال، کیف پول. ۵۸ RPC با اسکیما و
+      شماره فیلدهای قابل override — اگر بله پروتکل را عوض کرد، بدون آپدیت
+      کتابخانه وصل می‌شوی.</p>
+      <span class="tag">hybrid</span>
+    </div>
     <div class="bcard w3 rv">
       <div class="bico">⚡</div>
       <h4>هسته async از صفر</h4>
@@ -629,6 +643,71 @@ asyncio.run(bot.polling(dp))</code></pre>
   </div>
 </section>
 
+<section id="selfbot">
+  <div class="sec-head rv">
+    <div class="eyebrow">Self-bot / Internal API</div>
+    <h2>اکانت شخصی، نه ربات</h2>
+  </div>
+  <p class="sub rv">این همان چیزی است که بیشتر مردم دنبالش هستند و aiobale فقط آن را دارد.
+  در BADKING کنار ربات رسمی هست، نه به‌جای آن.</p>
+
+  <div class="note warn rv">
+    <b>این لایه غیررسمی است.</b> با شماره تلفن لاگین می‌کند، نه توکن @botfather.
+    ممکن است بشکند و ممکن است اکانتت مسدود شود. با شماره جداگانه کار کن.
+  </div>
+
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">selfbot.py</span><button class="copy">کپی</button></div>
+    <pre><code><span class="kw">from</span> badking <span class="kw">import</span> SelfBot
+
+<span class="kw">async with</span> SelfBot(session=<span class="st">"me.session"</span>) <span class="kw">as</span> bot:
+    <span class="fn">print</span>(<span class="kw">await</span> bot.get_me())
+
+    <span class="cm"># ⁦ارسال از اکانت شخصی⁩</span>
+    <span class="kw">await</span> bot.send_message(<span class="st">"@my_channel"</span>, <span class="st">"⁦سلام از BADKING⁩"</span>)
+
+    <span class="cm"># ⁦تاریخچه کامل⁩ — ⁦نه فقط ۲۴ ساعت⁩</span>
+    <span class="kw">async for</span> msg <span class="kw">in</span> bot.iter_messages(<span class="st">"@my_channel"</span>, limit=<span class="nm">500</span>):
+        <span class="fn">print</span>(msg.date, msg.text)
+
+    <span class="cm"># ⁦واکنش، حذف، فوروارد، تایپ⁩</span>
+    <span class="kw">await</span> bot.react(<span class="st">"@my_channel"</span>, <span class="nm">12345</span>, <span class="st">"❤"</span>)
+    <span class="kw">await</span> bot.delete_messages(<span class="st">"@my_channel"</span>, [<span class="nm">12345</span>])
+    <span class="kw">await</span> bot.send_typing(<span class="st">"@my_channel"</span>)</code></pre>
+  </div>
+
+  <div class="bento">
+    <div class="bcard w3 rv">
+      <h4>۵۸ RPC آماده</h4>
+      <p>پیام، واکنش، گروه، کانال، مخاطبین، وضعیت آنلاین، فایل، کیف پول، ربات،
+      جستجو، استیکر، تنظیمات. هر کدام با اسکیما و نام فیلد.</p>
+    </div>
+    <div class="bcard w3 rv">
+      <h4>هر RPC دیگری هم</h4>
+      <p>اگر متدی در لیست نیست، مستقیم صدایش بزن:
+      <code>bot.call("messaging.LoadHistory", ...)</code>. نیازی به fork نیست.</p>
+    </div>
+  </div>
+
+  <h3 class="rv">اگر بله پروتکل را عوض کرد</h3>
+  <p class="rv">پروتکل داخلی بله <code>.proto</code> رسمی ندارد — هیچ‌کس آن را از بله
+  نگرفته. در BADKING همه شماره فیلدها در یک جدول JSON است، نه پراکنده در کد.
+  اگر بله چیزی را جابه‌جا کرد، <code>BADKING_RPC_SCHEMA</code> را عوض می‌کنی و
+  بدون آپدیت کتابخانه وصل می‌شوی.</p>
+
+  <div class="codebox rv">
+    <div class="cb-head"><span class="cb-name">terminal</span><button class="copy">کپی</button></div>
+    <pre><code><span class="cm"># ⁦لیست همه متدها⁩</span>
+badking rpc
+
+<span class="cm"># ⁦فقط کیف پول⁩</span>
+badking rpc --service wallet
+
+<span class="cm"># ⁦لاگین و ذخیره نشست⁩</span>
+badking login --phone 09123456789 --session me.session</code></pre>
+  </div>
+</section>
+
 <section id="layers">
   <div class="sec-head rv">
     <div class="eyebrow">Access Layers</div>
@@ -667,11 +746,11 @@ asyncio.run(bot.polling(dp))</code></pre>
   <p class="sub rv">برای کسی که پایتون نمی‌داند ولی ربات می‌خواهد.</p>
   <div class="codebox rv">
     <div class="cb-head"><span class="cb-name">terminal</span><button class="copy">کپی</button></div>
-<pre><code>badking new mybot       <span class="cm"># ساخت پروژه کامل</span>
-badking dry-run         <span class="cm"># تست جریان بدون توکن</span>
-badking codegen         <span class="cm"># تبدیل flow.json به کد پایتون</span>
-badking setup           <span class="cm"># تنظیم توکن</span>
-badking run             <span class="cm"># اجرا</span></code></pre>
+<pre><code>badking new mybot       <span class="cm"># ⁦ساخت پروژه کامل⁩</span>
+badking dry-run         <span class="cm"># ⁦تست جریان بدون توکن⁩</span>
+badking codegen         <span class="cm"># ⁦تبدیل flow.json به کد پایتون⁩</span>
+badking setup           <span class="cm"># ⁦تنظیم توکن⁩</span>
+badking run             <span class="cm"># ⁦اجرا⁩</span></code></pre>
   </div>
   <p class="rv"><code>flow.json</code> را با Notepad ویرایش کن:</p>
   <div class="codebox rv">
@@ -679,9 +758,9 @@ badking run             <span class="cm"># اجرا</span></code></pre>
 <pre><code>{
   <span class="st">"start"</span>: <span class="st">"welcome"</span>,
   <span class="st">"steps"</span>: {
-    <span class="st">"welcome"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"سلام! 👋"</span>, <span class="st">"next"</span>: <span class="st">"ask_name"</span>},
-    <span class="st">"ask_name"</span>: {<span class="st">"type"</span>: <span class="st">"ask"</span>, <span class="st">"text"</span>: <span class="st">"اسمت چیه؟"</span>, <span class="st">"save"</span>: <span class="st">"name"</span>, <span class="st">"next"</span>: <span class="st">"done"</span>},
-    <span class="st">"done"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"خوش آمدی {name}!"</span>}
+    <span class="st">"welcome"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"⁦سلام!⁩ 👋"</span>, <span class="st">"next"</span>: <span class="st">"ask_name"</span>},
+    <span class="st">"ask_name"</span>: {<span class="st">"type"</span>: <span class="st">"ask"</span>, <span class="st">"text"</span>: <span class="st">"⁦اسمت چیه؟⁩"</span>, <span class="st">"save"</span>: <span class="st">"name"</span>, <span class="st">"next"</span>: <span class="st">"done"</span>},
+    <span class="st">"done"</span>: {<span class="st">"type"</span>: <span class="st">"message"</span>, <span class="st">"text"</span>: <span class="st">"⁦خوش آمدی⁩ {name}!"</span>}
   }
 }</code></pre>
   </div>
@@ -709,13 +788,13 @@ dp.register_middleware(convos)
 <span class="at">@</span>dp.message(F.text == <span class="st">"/register"</span>)
 <span class="kw">async def</span> <span class="fn">register</span>(message, bot):
     <span class="kw">async with</span> convos.conversation(bot, message.chat.id) <span class="kw">as</span> conv:
-        <span class="kw">await</span> conv.send(<span class="st">"اسم کاملت چیه؟"</span>)
+        <span class="kw">await</span> conv.send(<span class="st">"⁦اسم کاملت چیه؟⁩"</span>)
         name = <span class="kw">await</span> conv.get_response(timeout=<span class="nm">60</span>)
 
-        <span class="kw">await</span> conv.send(<span class="st">"شماره تماس؟"</span>)
+        <span class="kw">await</span> conv.send(<span class="st">"⁦شماره تماس؟⁩"</span>)
         phone = <span class="kw">await</span> conv.get_response(timeout=<span class="nm">60</span>)
 
-        <span class="kw">await</span> conv.send(<span class="st">f"ثبت شد ✅\nنام: {name.text}\nتلفن: {phone.text}"</span>)</code></pre>
+        <span class="kw">await</span> conv.send(<span class="st">f"⁦ثبت شد⁩ ✅\n⁦نام:⁩ {name.text}\n⁦تلفن:⁩ {phone.text}"</span>)</code></pre>
   </div>
   <p class="rv">اگر کاربر جواب ندهد <code>ConversationTimeout</code> می‌گیری. اگر چت دیگری پیام بدهد، مزاحم مکالمه نمی‌شود.</p>
 
@@ -724,13 +803,13 @@ dp.register_middleware(convos)
     <div class="cb-head"><span class="cb-name">pagination.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> KeyboardPaginator, F
 
-products = [<span class="st">"کتاب پایتون"</span>, <span class="st">"هدفون"</span>, <span class="st">"ماوس"</span>, <span class="st">"کیبورد"</span>, <span class="st">"مانیتور"</span>]
+products = [<span class="st">"⁦کتاب پایتون⁩"</span>, <span class="st">"⁦هدفون⁩"</span>, <span class="st">"⁦ماوس⁩"</span>, <span class="st">"⁦کیبورد⁩"</span>, <span class="st">"⁦مانیتور⁩"</span>]
 paginator = KeyboardPaginator(products, per_page=<span class="nm">3</span>, prefix=<span class="st">"shop"</span>)
 
 <span class="at">@</span>dp.message(F.text == <span class="st">"/shop"</span>)
 <span class="kw">async def</span> <span class="fn">shop</span>(message, bot):
     <span class="kw">await</span> bot.send_message(
-        message.chat.id, <span class="st">"محصولی انتخاب کن:"</span>,
+        message.chat.id, <span class="st">"⁦محصولی انتخاب کن:⁩"</span>,
         reply_markup=paginator.markup(page=<span class="nm">0</span>).model_dump(exclude_none=<span class="kw">True</span>),
     )
 
@@ -742,11 +821,11 @@ paginator = KeyboardPaginator(products, per_page=<span class="nm">3</span>, pref
     kind, value = parsed
     <span class="kw">if</span> kind == <span class="st">"page"</span>:
         <span class="kw">await</span> bot.edit_message_text(
-            cq.message.chat.id, cq.message.message_id, <span class="st">"محصولی انتخاب کن:"</span>,
+            cq.message.chat.id, cq.message.message_id, <span class="st">"⁦محصولی انتخاب کن:⁩"</span>,
             reply_markup=paginator.markup(page=value).model_dump(exclude_none=<span class="kw">True</span>),
         )
     <span class="kw">elif</span> kind == <span class="st">"item"</span>:
-        <span class="kw">await</span> bot.answer_callback_query(cq.id, <span class="st">f"انتخاب شد: {products[value]}"</span>)</code></pre>
+        <span class="kw">await</span> bot.answer_callback_query(cq.id, <span class="st">f"⁦انتخاب شد:⁩ {products[value]}"</span>)</code></pre>
   </div>
 
   <h3 id="fsm" class="rv"><span class="num">۳</span> FSM پایدار با SQLite</h3>
@@ -764,13 +843,13 @@ bot = Bot(<span class="st">"TOKEN"</span>)
 <span class="at">@</span>dp.message(F.text == <span class="st">"/order"</span>)
 <span class="kw">async def</span> <span class="fn">start_order</span>(message, state):
     <span class="kw">await</span> state.set_state(Order.item)
-    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"چه چیزی می‌خواهی؟"</span>)
+    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"⁦چه چیزی می‌خواهی؟⁩"</span>)
 
 <span class="at">@</span>dp.message(Order.item)
 <span class="kw">async def</span> <span class="fn">get_item</span>(message, state):
     <span class="kw">await</span> state.update_data(item=message.text)
     <span class="kw">await</span> state.set_state(Order.address)
-    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"آدرس تحویل؟"</span>)
+    <span class="kw">await</span> bot.send_message(message.chat.id, <span class="st">"⁦آدرس تحویل؟⁩"</span>)
 
 <span class="at">@</span>dp.message(Order.address)
 <span class="kw">async def</span> <span class="fn">get_address</span>(message, state):
@@ -778,7 +857,7 @@ bot = Bot(<span class="st">"TOKEN"</span>)
     <span class="kw">await</span> state.clear()
     <span class="kw">await</span> bot.send_message(
         message.chat.id,
-        <span class="st">f"سفارش ثبت شد ✅\nکالا: {data['item']}\nآدرس: {message.text}"</span>,
+        <span class="st">f"⁦سفارش ثبت شد⁩ ✅\n⁦کالا:⁩ {data['item']}\n⁦آدرس:⁩ {message.text}"</span>,
     )</code></pre>
   </div>
   <p class="rv">ربات را ری‌استارت کن — state سر جایش است.</p>
@@ -796,7 +875,7 @@ llm = OpenAICompatibleLLM(
 
 assistant = AIAssistant(
     llm,
-    persona=<span class="st">"دستیار فروشگاه، مودب و کوتاه جواب بده"</span>,
+    persona=<span class="st">"⁦دستیار فروشگاه، مودب و کوتاه جواب بده⁩"</span>,
     tools=[check_order_status, get_price],
 )
 
@@ -846,11 +925,11 @@ pay = PaymentToolkit(bot)
 
 <span class="kw">await</span> pay.send_invoice(
     chat_id=message.chat.id,
-    title=<span class="st">"کتاب پایتون"</span>,
-    description=<span class="st">"نسخه چاپی، ارسال رایگان"</span>,
+    title=<span class="st">"⁦کتاب پایتون⁩"</span>,
+    description=<span class="st">"⁦نسخه چاپی، ارسال رایگان⁩"</span>,
     payload=<span class="st">"order-1234"</span>,
     provider_token=<span class="st">"..."</span>,
-    prices=[{<span class="st">"label"</span>: <span class="st">"کتاب"</span>, <span class="st">"amount"</span>: <span class="nm">500000</span>}],
+    prices=[{<span class="st">"label"</span>: <span class="st">"⁦کتاب⁩"</span>, <span class="st">"amount"</span>: <span class="nm">500000</span>}],
 )</code></pre>
   </div>
 
@@ -859,9 +938,9 @@ pay = PaymentToolkit(bot)
     <div class="cb-head"><span class="cb-name">miniapp.py</span><button class="copy">کپی</button></div>
 <pre><code><span class="kw">from</span> badking <span class="kw">import</span> validate_init_data
 
-<span class="cm"># در سرور مینی‌اپ، initData را از کلاینت بگیر</span>
+<span class="cm"># ⁦در سرور مینی‌اپ، initData را از کلاینت بگیر⁩</span>
 data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123456:ABC..."</span>)
-<span class="fn">print</span>(data.user.id, data.user.first_name)   <span class="cm"># امضا تأیید شد</span></code></pre>
+<span class="fn">print</span>(data.user.id, data.user.first_name)   <span class="cm"># ⁦امضا تأیید شد⁩</span></code></pre>
   </div>
   <p class="rv">الگوریتم دقیقاً مطابق مستندات رسمی بله: فیلدها الفبایی مرتب، با <code>\n</code> متصل، HMAC-SHA256.</p>
 </section>
@@ -877,7 +956,7 @@ data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123
     <thead><tr><th>قابلیت</th><th>aiobale</th><th>BADKING</th></tr></thead>
     <tbody>
       <tr><td>توکن رسمی @botfather</td><td class="no">✗</td><td class="yes">✓</td></tr>
-      <tr><td>Self-bot / Internal API</td><td class="yes">✓ کامل</td><td class="no">⚠️ فقط چارچوب</td></tr>
+      <tr><td>Self-bot / Internal API</td><td class="yes">✓ کامل</td><td class="yes">✓ کامل + قابل override</td></tr>
       <tr><td>FSM + SQLite</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>Conversation (ویزارد)</td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td>KeyboardPaginator</td><td class="yes">✓</td><td class="yes">✓</td></tr>
@@ -957,8 +1036,11 @@ data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123
   <h3 class="rv">اعداد تأییدنشده</h3>
   <p class="rv">اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت» در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از <code>retry_after</code> واقعی سرور یاد می‌گیرند.</p>
 
-  <h3 class="rv">RPC داخلی self-bot</h3>
-  <p class="rv">پیاده‌سازی کامل ۸۰+ متد RPC داخلی هنوز انجام نشده. رابط و ایزولاسیون آماده است؛ خود RPC به‌عنوان پلاگین جداگانه منتشر می‌شود.</p>
+  <h3 class="rv">Self-bot کامل — نه چارچوب</h3>
+  <p class="rv">۵۸ RPC با اسکیما پیاده‌سازی شده: پیام، واکنش، گروه، کانال، مخاطبین، وضعیت آنلاین، فایل، کیف پول، ربات، جستجو، استیکر، تنظیمات. ورود با شماره + کد SMS کار می‌کند، تاریخچه کامل خوانده می‌شود، و از اکانت شخصی پیام می‌رود.</p>
+
+  <h3 class="rv">شماره فیلدها قابل override</h3>
+  <p class="rv">پروتکل داخلی بله .proto رسمی ندارد. در BADKING همه شماره فیلدها در یک جدول JSON است، نه پراکنده در کد. اگر بله پروتکل را عوض کرد، <code>BADKING_RPC_SCHEMA</code> را عوض می‌کنی و بدون آپدیت کتابخانه وصل می‌شوی. این تفاوت اصلی با هر پیاده‌سازی دیگری است.</p>
 </section>
 
 </main>

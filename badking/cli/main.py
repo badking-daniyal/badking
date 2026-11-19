@@ -169,6 +169,103 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_login(args: argparse.Namespace) -> int:
+    """ورود self-bot با شماره و کد SMS."""
+    import asyncio
+
+    from badking.hybrid import SelfBot
+
+    print("⚠️  حالت self-bot — با اکانت اصلی وارد نشو.")
+
+    async def run() -> int:
+        bot = SelfBot(
+            session=args.session,
+            phone=args.phone,
+            password=args.password,
+        )
+        try:
+            await bot.connect()
+            me = await bot.get_me()
+            print(f"✅ وارد شدی: {me}")
+            print(f"   session ذخیره شد در: {args.session}")
+            return 0
+        finally:
+            await bot.close()
+
+    return asyncio.get_event_loop().run_until_complete(run())
+
+
+def cmd_accounts(args: argparse.Namespace) -> int:
+    """لیست اکانت‌های ذخیره‌شده."""
+    from badking.hybrid import SessionStore
+
+    store = SessionStore(args.session, password=args.password)
+    accounts = store.list_accounts()
+    if not accounts:
+        print("هیچ اکانتی ذخیره نشده. اول `badking login` بزن.")
+        return 0
+    for acc in accounts:
+        mark = "✅" if acc["valid"] else "⚠️ "
+        print(f"{mark} {acc['key']}  {acc['name']}  {acc['phone']}")
+    return 0
+
+
+def cmd_selfbot(args: argparse.Namespace) -> int:
+    """اجرای یک اسکریپت self-bot با session آماده."""
+    import runpy
+
+    from badking.hybrid import SessionStore
+
+    store = SessionStore(args.session, password=args.password)
+    session = store.get()
+    if session is None:
+        print("session پیدا نشد. اول `badking login` بزن.")
+        return 1
+    os.environ["BADKING_SELFBOT_SESSION"] = args.session
+    runpy.run_path(args.script, run_name="__main__")
+    return 0
+
+
+def cmd_rpc(args: argparse.Namespace) -> int:
+    """لیست RPC های موجود."""
+    import json
+
+    from badking.hybrid import registry
+
+    if args.json:
+        data = {
+            name: {
+                "req": registry.get(name).req,
+                "resp": registry.get(name).resp,
+                "doc": registry.get(name).doc,
+                "dangerous": registry.get(name).dangerous,
+            }
+            for name in registry.names()
+        }
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.service:
+        methods = registry.by_service().get(args.service, [])
+        if not methods:
+            print(f"سرویس ناشناخته: {args.service}")
+            return 1
+        for m in methods:
+            spec = registry.get(f"{args.service}.{m}")
+            flag = " ⚠️" if spec.dangerous else ""
+            print(f"  {spec.full_name:32} {spec.doc}{flag}")
+        return 0
+
+    for service, methods in sorted(registry.by_service().items()):
+        print(f"\n{service} ({len(methods)})")
+        for m in methods:
+            spec = registry.get(f"{service}.{m}")
+            flag = " ⚠️" if spec.dangerous else ""
+            print(f"  {m:28} {spec.doc}{flag}")
+    print(f"\nمجموع: {len(registry.names())} متد")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="badking", description="BADKING — فریمورک ربات بله")
     sub = parser.add_subparsers(dest="cmd")
@@ -193,6 +290,28 @@ def main(argv: list[str] | None = None) -> int:
 
     p_run = sub.add_parser("run", help="روشن کردن ربات")
     p_run.set_defaults(func=cmd_run)
+
+    p_login = sub.add_parser("login", help="ورود self-bot با شماره و کد SMS")
+    p_login.add_argument("--phone", required=True, help="شماره تلفن (0912... یا +98912...)")
+    p_login.add_argument("--session", default="badking.session", help="مسیر فایل session")
+    p_login.add_argument("--password", help="رمز رمزنگاری فایل session")
+    p_login.set_defaults(func=cmd_login)
+
+    p_accounts = sub.add_parser("accounts", help="لیست اکانت‌های self-bot")
+    p_accounts.add_argument("--session", default="badking.session")
+    p_accounts.add_argument("--password")
+    p_accounts.set_defaults(func=cmd_accounts)
+
+    p_self = sub.add_parser("selfbot", help="اجرای اسکریپت self-bot")
+    p_self.add_argument("script", help="فایل پایتون")
+    p_self.add_argument("--session", default="badking.session")
+    p_self.add_argument("--password")
+    p_self.set_defaults(func=cmd_selfbot)
+
+    p_rpc = sub.add_parser("rpc", help="لیست RPC های self-bot")
+    p_rpc.add_argument("--service", help="فقط یک سرویس")
+    p_rpc.add_argument("--json", action="store_true", help="خروجی JSON")
+    p_rpc.set_defaults(func=cmd_rpc)
 
     args = parser.parse_args(argv)
     if not hasattr(args, "func"):
