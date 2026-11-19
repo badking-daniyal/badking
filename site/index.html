@@ -486,7 +486,7 @@ footer{
 <div class="hero" id="intro">
   <div class="hero-grid">
   <div class="hero-copy">
-  <div class="pill"><span class="dot"></span> نسخه ۰.۱.۰ — ۱۷۲ تست پاس‌شده</div>
+  <div class="pill"><span class="dot"></span> نسخه ۰.۱.۰ — ۱۸۶ تست پاس‌شده</div>
   <h1>ربات بله بساز.<br><span class="grad">بدون محدودیت.</span></h1>
   <p class="lead">
     فریمورک همه کاره، async و <b>AI-Native</b> برای بله. از کسی که کد بلد نیست تا مهندسی که به RPC خام نیاز دارد — سه لایه دسترسی، همه باز.
@@ -507,7 +507,7 @@ footer{
   </div>
 
   <div class="stats">
-    <div class="stat"><b data-count="172">۰</b><span>تست پاس</span></div>
+    <div class="stat"><b data-count="186">۰</b><span>تست پاس</span></div>
     <div class="stat"><b data-count="62">۰</b><span>صادرات</span></div>
     <div class="stat"><b data-count="76">۰</b><span>ماژول</span></div>
     <div class="stat"><b data-count="3">۰</b><span>لایه دسترسی</span></div>
@@ -575,7 +575,7 @@ asyncio.run(bot.polling(dp))</code></pre>
       <div class="bico">👤</div>
       <h4>Self-bot — کامل، نه چارچوب</h4>
       <p>اکانت شخصی، نه توکن بازو. ورود با شماره + کد SMS، تاریخچه کامل پیام‌ها،
-      ارسال از اکانت خودت، واکنش، گروه، کانال، کیف پول. ۵۸ RPC با اسکیما و
+      ارسال از اکانت خودت، واکنش، گروه، کانال، کیف پول. ۷۹ RPC با اسکیما و
       شماره فیلدهای قابل override — اگر بله پروتکل را عوض کرد، بدون آپدیت
       کتابخانه وصل می‌شوی.</p>
       <span class="tag">hybrid</span>
@@ -678,7 +678,7 @@ asyncio.run(bot.polling(dp))</code></pre>
 
   <div class="bento">
     <div class="bcard w3 rv">
-      <h4>۵۸ RPC آماده</h4>
+      <h4>۷۹ RPC آماده</h4>
       <p>پیام، واکنش، گروه، کانال، مخاطبین، وضعیت آنلاین، فایل، کیف پول، ربات،
       جستجو، استیکر، تنظیمات. هر کدام با اسکیما و نام فیلد.</p>
     </div>
@@ -686,6 +686,22 @@ asyncio.run(bot.polling(dp))</code></pre>
       <h4>هر RPC دیگری هم</h4>
       <p>اگر متدی در لیست نیست، مستقیم صدایش بزن:
       <code>bot.call("messaging.LoadHistory", ...)</code>. نیازی به fork نیست.</p>
+    </div>
+    <div class="bcard w3 rv">
+      <h4>raw_call — بدون اسکیما</h4>
+      <p>متدی که بله فردا اضافه می‌کند، امروز صدا زده می‌شود:
+      <code>bot.raw_call("messaging.New", {1: peer, 2: 5})</code>.
+      شماره فیلد را می‌دهی، بدون آپدیت کتابخانه.</p>
+    </div>
+    <div class="bcard w3 rv">
+      <h4>probe — کشف متد</h4>
+      <p>بررسی می‌کند یک RPC روی سرور وجود دارد یا نه، بدون اینکه بدانی
+      اسمش چیست: <code>await bot.probe("messaging.X")</code>.</p>
+    </div>
+    <div class="bcard w3 rv">
+      <h4>describe + search</h4>
+      <p>اسکیمای هر متد از داخل کد: <code>bot.describe("messaging.SendMessage")</code>
+      و جستجو با کلمه فارسی: <code>bot.search("واکنش")</code>.</p>
     </div>
   </div>
 
@@ -700,8 +716,14 @@ asyncio.run(bot.polling(dp))</code></pre>
     <pre><code><span class="cm"># ⁦لیست همه متدها⁩</span>
 badking rpc
 
-<span class="cm"># ⁦فقط کیف پول⁩</span>
-badking rpc --service wallet
+<span class="cm"># ⁦فقط گروه‌ها (۲۷ متد)⁩</span>
+badking rpc --service groups
+
+<span class="cm"># ⁦جستجو با کلمه فارسی⁩</span>
+badking rpc --search واکنش
+
+<span class="cm"># ⁦اسکیمای کامل یک متد⁩</span>
+badking rpc --describe messaging.SendMessage
 
 <span class="cm"># ⁦لاگین و ذخیره نشست⁩</span>
 badking login --phone 09123456789 --session me.session</code></pre>
@@ -1037,7 +1059,7 @@ data = validate_init_data(init_data_from_client, bot_token=<span class="st">"123
   <p class="rv">اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت» در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از <code>retry_after</code> واقعی سرور یاد می‌گیرند.</p>
 
   <h3 class="rv">Self-bot کامل — نه چارچوب</h3>
-  <p class="rv">۵۸ RPC با اسکیما پیاده‌سازی شده: پیام، واکنش، گروه، کانال، مخاطبین، وضعیت آنلاین، فایل، کیف پول، ربات، جستجو، استیکر، تنظیمات. ورود با شماره + کد SMS کار می‌کند، تاریخچه کامل خوانده می‌شود، و از اکانت شخصی پیام می‌رود.</p>
+  <p class="rv">۷۹ RPC با اسکیما پیاده‌سازی شده — تطابق یک‌به‌یک با کلاینت رسمی بله: پیام، واکنش، گروه، کانال، مخاطبین، وضعیت آنلاین، فایل، کیف پول، ربات، جستجو، استیکر، تنظیمات. ورود با شماره + کد SMS کار می‌کند، تاریخچه کامل خوانده می‌شود، و از اکانت شخصی پیام می‌رود.</p>
 
   <h3 class="rv">شماره فیلدها قابل override</h3>
   <p class="rv">پروتکل داخلی بله .proto رسمی ندارد. در BADKING همه شماره فیلدها در یک جدول JSON است، نه پراکنده در کد. اگر بله پروتکل را عوض کرد، <code>BADKING_RPC_SCHEMA</code> را عوض می‌کنی و بدون آپدیت کتابخانه وصل می‌شوی. این تفاوت اصلی با هر پیاده‌سازی دیگری است.</p>

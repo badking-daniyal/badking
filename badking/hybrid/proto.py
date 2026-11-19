@@ -144,13 +144,22 @@ def decode(data: bytes, schema: dict[int, Any] | None = None) -> dict[int, list[
 def encode_named(value: dict[str, Any], schema: dict[str, Any]) -> bytes:
     """کدگذاری دیکشنری نام‌دار با اسکیمای {نام: شماره فیلد}.
 
-    برای پیام تودرتو، مقدار اسکیما یک dict با کلیدهای `field` و `fields` است:
+    سه شکل قاعده پشتیبانی می‌شود:
+
+        "peer": 1                              → فیلد ساده
+        "peer": {"field": 1, "fields": {...}}  → پیام تودرتو
+        "users": {"field": 3, "fields": {...}, "repeated": True}  → لیست پیام
+
+    تودرتویی هر عمقی مجاز است: MessageContent{15: TextMessage{1: value}}.
 
         schema = {
             "peer": {"field": 1, "fields": {"type": 1, "id": 2, "accessHash": 3}},
-            "rid": 2,
+            "content": {"field": 3, "fields": {
+                "text": {"field": 15, "fields": {"value": 1}},
+            }},
         }
-        encode_named({"peer": {"type": 4, "id": 1}, "rid": 9}, schema)
+        encode_named({"peer": {"type": 1, "id": 7},
+                      "content": {"text": {"value": "hi"}}}, schema)
     """
     fields: dict[int, Any] = {}
     for name, val in value.items():
@@ -159,14 +168,35 @@ def encode_named(value: dict[str, Any], schema: dict[str, Any]) -> bytes:
         rule = schema.get(name)
         if rule is None:
             raise ProtoError(f"فیلد '{name}' در اسکیما نیست: {sorted(schema)}")
+
         if isinstance(rule, int):
             fields[rule] = val
-        elif isinstance(rule, dict) and "field" in rule and "fields" in rule:
-            if not isinstance(val, dict):
-                raise ProtoError(f"فیلد '{name}' باید dict باشد، نه {type(val).__name__}")
-            fields[int(rule["field"])] = encode_named(val, rule["fields"])
-        else:
+            continue
+
+        if not isinstance(rule, dict) or "field" not in rule:
             raise ProtoError(f"اسکیمای نامعتبر برای '{name}': {rule!r}")
+
+        num = int(rule["field"])
+        sub = rule.get("fields")
+
+        if sub is None:
+            # پیام تودرتو بدون اسکیمای اعلام‌شده: dict با کلید عددی
+            fields[num] = val
+            continue
+
+        items = val if isinstance(val, list) else [val]
+        encoded: list[bytes] = []
+        for item in items:
+            if isinstance(item, bytes):
+                encoded.append(item)
+            elif isinstance(item, dict):
+                encoded.append(encode_named(item, sub))
+            else:
+                raise ProtoError(
+                    f"فیلد '{name}' باید dict یا لیست dict باشد، نه {type(item).__name__}"
+                )
+        fields[num] = encoded if isinstance(val, list) else encoded[0]
+
     return build(fields)
 
 

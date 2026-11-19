@@ -296,21 +296,48 @@ async def ping(msg):
 await bot.run_until_disconnected()
 ```
 
-هر RPC داخلی، حتی آن‌هایی که آماده نیستند:
-
-```python
-await bot.call("messaging.LoadHistory",
-               peer={"type": 4, "id": 123, "accessHash": 456},
-               date=-1, loadMode=2, limit=20)
-```
-
-**۵۸ RPC** با اسکیما آماده است: پیام، واکنش، گروه، کانال، مخاطبین، وضعیت
-آنلاین، فایل، کیف پول، ربات، جستجو، استیکر، تنظیمات.
+**۷۹ RPC** با اسکیما و شماره فیلد واقعی — دقیقاً همان‌هایی که کلاینت بله
+استفاده می‌کند، نه بیشتر و نه کمتر:
 
 ```bash
-badking rpc                    # لیست همه
-badking rpc --service wallet   # فقط کیف پول
+badking rpc                          # لیست همه ۷۹ متد
+badking rpc --service groups         # ۲۷ متد گروه و کانال
+badking rpc --search واکنش           # جستجو در نام و توضیح
+badking rpc --describe messaging.SendMessage   # اسکیمای کامل یک متد
 ```
+
+### هر RPC، حتی آن‌هایی که در جدول نیستند
+
+```python
+# با نام و اسکیما
+await bot.call("messaging.LoadHistory",
+               peer={"type": 4, "id": 123, "accessHash": 456},
+               offset_date=-1, load_mode=2, limit=20)
+
+# بدون اسکیما، با شماره فیلد خام — برای متدهایی که بله بعداً اضافه می‌کند
+await bot.raw_call("messaging.SomeNewMethod", {1: peer_bytes, 2: 5})
+
+# کشف متد ناشناخته
+await bot.probe("messaging.SomeNewMethod")
+
+# دیدن اسکیما از داخل کد
+bot.describe("messaging.SendMessage")
+bot.search("واکنش")
+```
+
+### ساختار پیام، همان‌طور که بله می‌خواهد
+
+```python
+from badking.hybrid import make_text_content, make_chat, make_peer
+
+# MessageContent{15: TextMessage{1: value}} — نه {"textMessage": ...}
+content = make_text_content("سلام")
+chat = make_chat("channel", 123)
+peer = make_peer("channel", 123, access_hash=456)
+```
+
+`raw_call` همان دری است که aiobale ندارد: اگر بله متد جدیدی اضافه کند و در
+جدول ما نباشد، بدون آپدیت کتابخانه صدایش می‌زنی.
 
 ### اگر بله پروتکل را عوض کرد
 
@@ -371,7 +398,11 @@ badking run             # اجرا
 | قابلیت | aiobale | BADKING |
 |---|---|---|
 | توکن رسمی @botfather | ❌ (لاگین شماره) | ✅ |
-| Self-bot / Internal API | ✅ کامل | ✅ کامل + قابل override |
+| Self-bot / Internal API | ✅ ۷۹ متد | ✅ ۷۹ متد + `raw_call` + `probe` |
+| اسکیما قابل override بدون آپدیت | ❌ | ✅ |
+| صدا زدن متد ناشناخته (بدون اسکیما) | ❌ | ✅ `raw_call` |
+| کشف متد جدید روی سرور | ❌ | ✅ `probe` |
+| `describe` / `search` روی RPC ها | ❌ | ✅ |
 | FSM + SQLite | ✅ | ✅ |
 | Conversation (ویزارد) | ✅ | ✅ |
 | KeyboardPaginator | ✅ | ✅ |
@@ -435,7 +466,7 @@ badking/
 - **Self-bot ریسک دارد.** لایه `hybrid` پیش‌فرض خاموش است و بدون `ack_risk=True` فعال نمی‌شود. دلیلش: Internal API غیررسمی است، می‌شکند، و می‌تواند اکانت شخصی‌ات را ببندد. ببین [`badking/hybrid/README.md`](badking/hybrid/README.md).
 - **شماره فیلدهای پروتکل داخلی، رسمی نیست.** هیچ‌کس آن‌ها را از بله نگرفته. تفاوت BADKING این است که همه در یک جدول JSON است و با `BADKING_RPC_SCHEMA` بدون آپدیت کتابخانه عوض می‌شود.
 - **اعدادی مثل «۴۰۹۶ کاراکتر» یا «حذف تا ۴۸ ساعت»** در مستندات رسمی بله نیامده‌اند. در BADKING پیش‌فرض قابل‌تنظیم‌اند و از `retry_after` واقعی سرور یاد می‌گیرند.
-- **Self-bot کامل پیاده‌سازی شده.** ۵۸ RPC با اسکیما، ورود با شماره + کد SMS، تاریخچه، ارسال از اکانت شخصی، کیف پول، رویدادها. ۷۴ تست آفلاین.
+- **Self-bot کامل پیاده‌سازی شده.** ۷۹ RPC با اسکیما و شماره فیلد واقعی (تطابق کامل با کلاینت رسمی بله)، ورود با شماره + کد SMS، تاریخچه، ارسال متن و فایل، واکنش، گروه و کانال، مخاطبین، کیف پول، رویدادها. ۸۸ تست آفلاین.
 
 ---
 

@@ -232,6 +232,48 @@ def cmd_rpc(args: argparse.Namespace) -> int:
 
     from badking.hybrid import registry
 
+    # جستجو
+    if getattr(args, "search", None):
+        hits = registry.search(args.search)
+        if not hits:
+            print(f"چیزی پیدا نشد: {args.search}")
+            return 1
+        for name in hits:
+            spec = registry.get(name)
+            flag = " ⚠️" if spec.dangerous else ""
+            print(f"  {name:34} {spec.doc}{flag}")
+        print(f"\n{len(hits)} نتیجه")
+        return 0
+
+    # توصیف یک متد
+    if getattr(args, "describe", None):
+        try:
+            spec = registry.get(args.describe)
+        except KeyError:
+            print(f"RPC ناشناخته: {args.describe}")
+            return 1
+        print(f"نام:      {spec.full_name}")
+        print(f"سرویس:    {spec.full_service}")
+        print(f"توضیح:    {spec.doc or '—'}")
+        print(f"خطرناک:   {'بله' if spec.dangerous else 'خیر'}")
+        print(f"peer لازم: {'بله' if spec.needs_peer else 'خیر'}")
+        print("\nدرخواست:")
+        for name, rule in spec.schema().items():
+            if isinstance(rule, int):
+                print(f"  {name:20} فیلد {rule}")
+            else:
+                rep = " (لیست)" if rule.get("repeated") else ""
+                print(f"  {name:20} فیلد {rule['field']} → {rule['fields']}{rep}")
+        if spec.resp:
+            print("\nپاسخ:")
+            for name, rule in spec.resp.items():
+                if isinstance(rule, int):
+                    print(f"  {name:20} فیلد {rule}")
+                else:
+                    rep = " (لیست)" if rule.get("repeated") else ""
+                    print(f"  {name:20} فیلد {rule['field']} → {rule['fields']}{rep}")
+        return 0
+
     if args.json:
         data = {
             name: {
@@ -310,6 +352,8 @@ def main(argv: list[str] | None = None) -> int:
 
     p_rpc = sub.add_parser("rpc", help="لیست RPC های self-bot")
     p_rpc.add_argument("--service", help="فقط یک سرویس")
+    p_rpc.add_argument("--search", help="جستجو در نام و توضیح متدها")
+    p_rpc.add_argument("--describe", help="نمایش کامل اسکیمای یک متد")
     p_rpc.add_argument("--json", action="store_true", help="خروجی JSON")
     p_rpc.set_defaults(func=cmd_rpc)
 

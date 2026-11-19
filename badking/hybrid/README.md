@@ -1,40 +1,11 @@
-# لایه Hybrid — Self-Bot
+# لایه Hybrid — Self-bot بله
 
-> **هشدار جدی:** این لایه با API داخلی بله کار می‌کند، نه API رسمی بازو.
-> استفاده از آن ممکن است اکانت شخصی‌ات را مسدود کند. با اکانت اصلی وارد نشو.
-> این کد آگاهانه و با `ack_risk=True` فعال می‌شود، هرگز خودکار.
+کار با **اکانت شخصی** بله، نه توکن ربات. همان چیزی که کلاینت رسمی استفاده
+می‌کند، از داخل پایتون.
 
----
-
-## چرا این لایه وجود دارد
-
-API رسمی بله (`tapi.bale.ai`) فقط چیزی را می‌دهد که @botfather اجازه داده باشد.
-کارهایی که با توکن رسمی **از هیچ کتابخانه‌ای** ممکن نیست:
-
-- خواندن تاریخچه پیام‌های قدیمی
-- ارسال از اکانت شخصی (نه ربات)
-- دیدن وضعیت آنلاین، «در حال تایپ»، واکنش‌ها
-- عضویت و مدیریت گروه/کانال بدون ادمین بودن ربات
-- کیف پول و انتقال پول
-- هر چیزی که اپ موبایل بله می‌کند ولی ربات نمی‌تواند
-
-این لایه همان دسترسی را می‌دهد.
-
-## چه چیزی از aiobale بهتر است
-
-| موضوع | aiobale | BADKING Hybrid |
-|---|---|---|
-| شماره فیلدهای پروتکل | داخل کد پراکنده | یک جدول JSON قابل override |
-| اگر بله پروتکل را عوض کند | کتابخانه می‌شکند | `BADKING_RPC_SCHEMA` را عوض کن |
-| رمزگشایی پیام تودرتو | حدسی | اسکیما-محور (متن خراب نمی‌شود) |
-| ذخیره session | فایل ساده | رمزنگاری‌شده + چند اکانت |
-| یادگیری محدودیت نرخ | ثابت | از `retry_after` سرور یاد می‌گیرد |
-| اتصال مجدد | پایه | backoff نمایی + صف درخواست‌ها |
-| تست | نامشخص | ۷۴ تست آفلاین |
-| RPC های آماده | ۸۰+ | ۵۸ با اسکیما + هر RPC دلخواه |
-
-نکته مهم: **شماره فیلدها در هیچ‌کدام «رسمی» نیست.** تفاوت این است که
-اینجا اگر اشتباه بود، در یک فایل عوضش می‌کنی، نه در ۵۰ فایل.
+> ⚠️ **این لایه غیررسمی است.** بله آن را برای استفاده شخص ثالث منتشر نکرده.
+> ممکن است بدون اطلاع تغییر کند، و ممکن است اکانتت مسدود شود. با یک شماره
+> جداگانه کار کن، نه شماره اصلی. مسئولیت با خودت است.
 
 ---
 
@@ -44,275 +15,257 @@ API رسمی بله (`tapi.bale.ai`) فقط چیزی را می‌دهد که @bo
 pip install "badking[hybrid]"
 ```
 
-وابستگی‌ها: `websockets` و `protobuf`.
+فقط یک وابستگی اضافه می‌شود: `websockets`. کدک protobuf از صفر نوشته شده،
+پس `protobuf` لازم نیست.
 
 ---
 
-## شروع سریع
-
-```python
-import asyncio
-from badking.hybrid import SelfBot
-
-async def main():
-    async with SelfBot(session="me.session") as bot:
-        me = await bot.get_me()
-        print("وارد شدم به:", me)
-
-        # ارسال از اکانت شخصی
-        await bot.send_message("@my_channel", "سلام از BADKING")
-
-        # خواندن تاریخچه
-        async for msg in bot.iter_messages("@my_channel", limit=100):
-            print(msg.date, msg.text)
-
-asyncio.run(main())
-```
-
-بار اول که `me.session` وجود ندارد، باید شماره بدهی:
-
-```python
-async with SelfBot(session="me.session", phone="09123456789") as bot:
-    ...
-```
-
-کد SMS را می‌پرسد و session را ذخیره می‌کند. دفعه بعد بدون کد وصل می‌شوی.
-
----
-
-## ورود از ترمینال
+## ورود
 
 ```bash
 badking login --phone 09123456789 --session me.session
 ```
 
-یا با رمز برای رمزنگاری فایل session:
+کد SMS را می‌پرسد، session را رمزنگاری‌شده ذخیره می‌کند. بار بعد:
 
-```bash
-badking login --phone 09123456789 --session me.session --password mysecret
-```
+```python
+from badking import SelfBot
 
-بعدش هر بار:
-
-```bash
-export BADKING_SESSION_KEY=mysecret
+async with SelfBot(session="me.session") as bot:
+    me = await bot.get_me()
+    print(me.id, me.title)
 ```
 
 ---
 
-## چند اکانت
+## چه چیزی هست
+
+**۷۹ RPC**، دقیقاً همان‌هایی که کلاینت بله صدا می‌زند. این عدد از سورس
+`aiobale` استخراج شده، نه حدس. تطابق یک‌به‌یک:
+
+| سرویس | تعداد | نمونه |
+|---|---|---|
+| `groups` | ۲۷ | ساخت گروه، ادمین، بن، لینک دعوت، انتقال مالکیت |
+| `user` | ۱۶ | مخاطبین، مسدودی، پروفایل، جستجو |
+| `messaging` | ۱۲ | ارسال، ویرایش، حذف، فوروارد، سنجاق، تاریخچه |
+| `abacus` | ۵ | واکنش، بازدید |
+| `auth` | ۵ | ورود، کد، رمز دومرحله‌ای |
+| `presence` | ۳ | آنلاین، تایپ |
+| `magazine` | ۳ | لایک پست |
+| `files` | ۲ | آپلود، دانلود |
+| `gift_packet` | ۲ | بسته هدیه |
+| `configs` | ۲ | تنظیمات سرور |
+| `kifpool` | ۱ | کیف پول |
+| `report` | ۱ | گزارش محتوا |
+
+---
+
+## ساختار پیام، همان‌طور که بله می‌خواهد
+
+این جایی است که بیشتر پیاده‌سازی‌ها اشتباه می‌کنند. متن در
+`MessageContent` فیلد **۱۵** است، نه ۱. و `SendMessage` فیلد **۶** (`chat`)
+را هم لازم دارد:
+
+```
+SendMessage {
+  1: Peer { 1: type, 2: id, 3: accessHash }
+  2: message_id
+  3: MessageContent { 15: TextMessage { 1: value } }
+  5: reply_to
+  6: Chat { 1: type, 2: id }
+}
+```
+
+کتابخانه این را برایت می‌سازد:
 
 ```python
-from badking.hybrid import SessionStore
+from badking.hybrid import make_text_content, make_chat, make_peer
 
-store = SessionStore("accounts.session", password="secret")
-print(store.list_accounts())
-# [{'key': 'user:123', 'phone': '98912...', 'name': 'دانیال', 'valid': True}]
-
-session = store.get("user:123")
-bot = SelfBot(session=session)
+await bot.call(
+    "messaging.SendMessage",
+    peer=make_peer("channel", 123, 456),
+    message_id=999,
+    content=make_text_content("سلام"),
+    chat=make_chat("channel", 123),
+)
 ```
 
 ---
 
-## ارسال همه نوع پیام
+## API سطح بالا
 
 ```python
-# متن
-await bot.send_message("@channel", "سلام")
+async with SelfBot(session="me.session") as bot:
+    # پیام
+    await bot.send_message("@channel", "سلام")
+    await bot.send_file("@channel", "report.pdf", caption="گزارش")
+    await bot.edit_message("@channel", 123, "متن جدید")
+    await bot.delete_messages("@channel", [123, 124])
+    await bot.forward_messages("@dest", [123], from_peer="@src")
 
-# پاسخ به پیام
-await bot.send_message("@channel", "پاسخ", reply_to=12345)
+    # واکنش و بازدید
+    await bot.react("@channel", 123, "❤")
+    await bot.remove_reaction("@channel", 123, "❤")
+    await bot.get_reactions("@channel", 123)
+    await bot.get_views("@channel", [123, 124])
 
-# بی‌صدا
-await bot.send_message("@channel", "بی‌صدا", silent=True)
+    # وضعیت
+    await bot.send_typing("@channel")
+    await bot.stop_typing("@channel")
+    await bot.set_online()
+    await bot.mark_read("@channel")
 
-# ویرایش
-await bot.edit_message("@channel", 12345, "متن جدید")
+    # سنجاق
+    await bot.pin_message("@channel", 123)
+    await bot.unpin_message("@channel", 123)
+    await bot.get_pinned("@channel")
 
-# حذف
-await bot.delete_messages("@channel", [12345], revoke=True)
+    # گروه و کانال
+    await bot.create_group("گروه من", channel=False)
+    await bot.get_group("@group")
+    await bot.join_group("https://ble.ir/join/...")
+    await bot.leave_group("@group")
+    await bot.invite_users("@group", [111, 222])
+    await bot.kick_user("@group", 111)
+    await bot.get_members("@group")
+    await bot.get_invite_link("@group")
 
-# فوروارد
-await bot.forward_messages("@dest", [12345], from_peer="@source")
+    # مخاطبین
+    await bot.get_contacts()
+    await bot.add_contact("09123456789", "علی")
+    await bot.block_user(111)
+    await bot.unblock_user(111)
 
-# واکنش
-await bot.react("@channel", 12345, "❤")
+    # پروفایل
+    await bot.edit_name("نام جدید")
+    await bot.edit_about("بیو جدید")
+    await bot.check_username("myusername")
 
-# تایپ کردن
-await bot.send_typing("@channel")
+    # تاریخچه
+    async for msg in bot.iter_messages("@channel", limit=500):
+        print(msg.date, msg.text)
 
-# خوانده‌شده
-await bot.mark_read("@channel")
+    # گفتگوها
+    async for d in bot.iter_dialogs():
+        print(d.peer, d.unread, d.last_message)
 ```
 
 ---
 
-## رویدادها (event handlers)
+## رویدادها
 
 ```python
-from badking.hybrid import SelfBot
-
-bot = SelfBot(session="me.session")
-
 @bot.on(lambda m: m.text == "/ping")
 async def ping(msg):
     await msg.reply("pong")
 
-@bot.on(lambda m: "سلام" in m.text)
-async def salam(msg):
-    await msg.react("👋")
-
-@bot.on()  # همه پیام‌ها
-async def log(msg):
-    print(f"{msg.chat_id}: {msg.text}")
-
-async def main():
-    async with bot:
-        await bot.run_until_disconnected()
-```
-
-رویداد خام (هر update، حتی آن‌هایی که تفسیر نشده‌اند):
-
-```python
 @bot.on_raw
-def raw(frame: bytes):
-    print("update خام:", len(frame), "بایت")
+def raw(frame):
+    print("فریم خام:", len(frame))
+
+await bot.run_until_disconnected()
 ```
 
 ---
 
-## هر RPC، حتی ناشناخته‌ها
+## سه دری که aiobale ندارد
 
-لایه ۲ دسترسی خام است. هر متدی که در رجیستری باشد:
+### ۱. `raw_call` — بدون اسکیما
+
+اگر بله متد جدیدی اضافه کند و در جدول ما نباشد:
 
 ```python
-resp = await bot.call("messaging.LoadHistory",
-                      peer={"type": 4, "id": 123, "accessHash": 456},
-                      date=-1, loadMode=2, limit=20)
+await bot.raw_call("messaging.NewMethod", {1: peer_bytes, 2: 5})
 ```
 
-دیدن همه متدها:
+شماره فیلد را می‌دهی، bytes برمی‌گردد. بدون آپدیت کتابخانه.
+
+### ۲. `probe` — کشف متد
 
 ```python
-from badking.hybrid import registry
-
-for name in registry.names():
-    print(name)
-
-# گروه‌بندی بر اساس سرویس
-for service, methods in registry.by_service().items():
-    print(service, len(methods))
+result = await bot.probe("messaging.NewMethod")
+# {"exists": True}  یا  {"exists": False, "error": "unimplemented"}
 ```
 
-اضافه کردن متد خودت:
+### ۳. `describe` و `search` — اسکیما از داخل کد
 
 ```python
-from badking.hybrid import RpcSpec, registry
+bot.describe("messaging.SendMessage")
+# {"name": ..., "service": "bale.messaging.v2.Messaging", "request": {...}, ...}
 
-registry.register(RpcSpec(
-    name="custom",
-    service="custom",
-    method="MyMethod",
-    req={"foo": 1, "bar": 2},
-    resp={"result": 1},
-))
-
-resp = await bot.call("custom.MyMethod", foo="x", bar=5)
+bot.search("واکنش")
+# ["abacus.GetMessageReactionsList", "abacus.GetMessagesReactions", ...]
 ```
 
 ---
 
 ## اگر بله پروتکل را عوض کرد
 
-این مهم‌ترین بخش است. شماره فیلدها را در یک فایل JSON بنویس:
+شماره فیلدها در `badking/hybrid/schema.py` است، نه پراکنده در کد. دو راه:
+
+**۱. override بدون دست زدن به کد:**
+
+```bash
+export BADKING_RPC_SCHEMA=/path/to/my_schema.json
+```
 
 ```json
 {
   "messaging.SendMessage": {
-    "req": { "peer": 1, "rid": 2, "message": 3 },
-    "resp": { "rid": 1, "date": 2 }
+    "req": { "peer": 1, "message_id": 2, "content": 3, "chat": 6 },
+    "resp": { "seq": 1, "date": 2 }
   }
 }
 ```
 
-بعد:
-
-```bash
-export BADKING_RPC_SCHEMA=/path/to/schema.json
-```
-
-یا در کد:
+**۲. از داخل کد:**
 
 ```python
 from badking.hybrid import registry
-registry.load_schema_file("schema.json")
+registry.load_overrides({"messaging.SendMessage": {"req": {"peer": 1}}})
 ```
 
-**بدون آپدیت کتابخانه.** این تفاوت اصلی با هر پیاده‌سازی دیگری است.
+این تفاوت اصلی است: کتابخانه‌ای که شماره فیلد را در صد فایل پخش می‌کند،
+با اولین تغییر بله می‌شکند. اینجا یک جدول است.
 
 ---
 
-## محدودیت نرخ
+## CLI
 
-سرور بله `retry_after` برمی‌گرداند. BADKING از آن یاد می‌گیرد:
-
-```python
-bot = SelfBot(session="me.session")
-await bot.connect()
-
-print(bot._transport.rate.min_interval)   # فاصله‌ای که یاد گرفته
-print(bot._transport.rate.observed_retry_after)  # تاریخچه
+```bash
+badking rpc                              # همه ۷۹ متد
+badking rpc --service groups             # فقط گروه‌ها
+badking rpc --search واکنش               # جستجو
+badking rpc --describe messaging.SendMessage
+badking rpc --json                       # خروجی ماشین‌خوان
 ```
-
-هر بار که محدود می‌شوی، فاصله پایه خودش بالا می‌رود. لازم نیست دستی تنظیم کنی.
-
----
-
-## آمار اتصال
-
-```python
-print(bot.stats())
-# {'connected': True, 'sent': 42, 'received': 118, 'reconnects': 0, 'errors': 0}
-```
-
----
-
-## ریسک‌ها — بدون تعارف
-
-| ریسک | واقعیت |
-|---|---|
-| مسدود شدن اکانت | واقعی. بله می‌تواند اکانت را ببندد. |
-| شکستن پروتکل | واقعی. هر چند ماه احتمالاً. |
-| تست خودکار | غیرممکن بدون شماره واقعی. |
-| پشتیبانی | هیچ. غیررسمی است. |
-| قوانین بله | ممکن است نقض شود. مسئولیتش با توست. |
-
-**توصیه:** با یک شماره جداگانه و اکانت تست کار کن. اکانت اصلی‌ات را وصل نکن.
-
----
-
-## معماری
-
-```
-badking/hybrid/
-├── session.py     ذخیره امن اکانت‌ها (چند اکانت، رمزنگاری at-rest)
-├── proto.py       کدک protobuf از صفر، بدون .proto
-├── transport.py   WebSocket، تطبیق درخواست/پاسخ، اتصال مجدد، یادگیری نرخ
-├── rpc.py         رجیستری ۵۸ متد با شماره فیلد قابل override
-├── auth.py        جریان شماره + کد SMS
-├── client.py      API سطح‌بالا (SelfBot)
-└── plugin.py      اتصال به Dispatcher، خاموش پیش‌فرض
-```
-
-هر ماژول جدا تست می‌شود. `proto.py` هیچ وابستگی خارجی ندارد.
 
 ---
 
 ## تست
 
 ```bash
-pytest tests/test_hybrid.py -v
+pytest tests/test_hybrid.py -q
 ```
 
-۷۴ تست، همه آفلاین. هیچ اتصال شبکه‌ای به بله نمی‌زنند.
+۸۸ تست، همه آفلاین. هیچ اتصالی به سرور بله نمی‌زنند. کدک، session، رجیستری،
+قاب‌بندی، و منطق کلاینت با یک transport جعلی تست می‌شوند.
+
+**آنچه تست نشده:** اتصال زنده. برای آن شماره واقعی و کد SMS لازم است.
+کد آماده است، ولی تا کسی با شماره خودش لاگین نکند نمی‌توان گفت روی سرور
+بله کار می‌کند.
+
+---
+
+## فایل‌ها
+
+| فایل | کار |
+|---|---|
+| `schema.py` | جدول ۷۹ RPC + ۳۷ تایپ تودرتو + اسکیمای پاسخ |
+| `proto.py` | کدک protobuf از صفر، بدون وابستگی |
+| `transport.py` | WebSocket، فریم‌بندی، تطبیق id، اتصال مجدد، یادگیری نرخ |
+| `auth.py` | جریان شماره + کد SMS |
+| `session.py` | ذخیره چند اکانت، رمزنگاری at-rest |
+| `rpc.py` | رجیستری، ساخت درخواست، رمزگشایی پاسخ |
+| `client.py` | `SelfBot`: ۴۰+ متد سطح بالا |
+| `plugin.py` | `HybridPlugin`، پشت `ack_risk=True` |

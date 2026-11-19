@@ -17,7 +17,7 @@
     session.py    → ذخیره امن اکانت‌ها (چند اکانت، رمزنگاری at-rest)
     proto.py      → کدک protobuf از صفر، بدون .proto
     transport.py  → WebSocket، تطبیق درخواست/پاسخ، اتصال مجدد، یادگیری نرخ
-    rpc.py        → رجیستری ۵۸ متد با شماره فیلد قابل override
+    rpc.py        → رجیستری ۷۹ متد با شماره فیلد قابل override
     auth.py       → جریان شماره + کد SMS
     client.py     → API سطح‌بالا (SelfBot)
 """
@@ -36,14 +36,20 @@ from .auth import (
 from .client import Dialog, Message, Peer, SelfBot, SelfBotError
 from .proto import ProtoError, build, decode, encode_named
 from .rpc import (
-    PEER_TYPE,
-    PEER_SCHEMA,
+    CHAT_TYPE,
     MESSAGE_BODY_SCHEMA,
+    MESSAGE_CONTENT_SCHEMA,
+    PEER_SCHEMA,
+    PEER_TYPE,
     RpcRegistry,
     RpcSpec,
     decode_response,
     encode_request,
+    make_chat,
+    make_document_content,
+    make_inline_keyboard,
     make_peer,
+    make_text_content,
     registry,
 )
 from .session import Session, SessionError, SessionStore
@@ -189,7 +195,11 @@ __all__ = [
     "frame_length_prefixed",
     "hybrid_warning",
     "interactive_login",
+    "make_chat",
+    "make_document_content",
+    "make_inline_keyboard",
     "make_peer",
+    "make_text_content",
     "normalize_phone",
     "registry",
     "unframe_length_prefixed",
