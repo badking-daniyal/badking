@@ -27,6 +27,8 @@ from typing import Any
 
 log = logging.getLogger("badking.compat")
 
+from .bale_method import BaleMethod
+
 
 # ---------- نگاشت اسم‌ها ----------
 
@@ -35,6 +37,7 @@ IMPORT_MAP: dict[str, str] = {
     "Client": "Bot",
     "BaleClient": "Bot",
     "Bot": "Bot",
+    "BaleMethod": "BaleMethod",
     "Dispatcher": "Dispatcher",
     "Router": "Router",
     "Message": "Message",
@@ -481,6 +484,7 @@ def migration_summary(reports: list[MigrationReport]) -> str:
 
 __all__ = [
     "Application",
+    "BaleMethod",
     "Bot",
     "Dispatcher",
     "F",

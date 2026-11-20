@@ -119,7 +119,7 @@ from .hybrid import (
 )
 
 # مهاجرت از aiobale
-from .compat import MigrationReport, analyze, migrate_file, migrate_source, migration_summary
+from .compat import BaleMethod, MigrationReport, analyze, migrate_file, migrate_source, migration_summary
 
 # مدیریت و نظارت
 from .moderation import (
@@ -230,7 +230,7 @@ __all__ += [
     "flood_rule", "link_rule", "mention_spam_rule", "word_rule",
     "MediaEngine", "MediaInfo", "safe_filename", "validate_extension",
     "RedisStorage", "PostgreSQLStorage",
-    "MigrationReport", "analyze", "migrate_file", "migrate_source", "migration_summary",
+    "MigrationReport", "analyze", "migrate_file", "migrate_source", "migration_summary", "BaleMethod",
     "SessionManager", "SessionManagerError", "AccountInfo", "CheckReport", "CreateResult",
     "BADKINGError", "AuthenticationError", "ChatNotFoundError", "ChatWriteForbiddenError",
     "CircuitOpenError", "CodeInvalidError", "ConfigError", "ConnectionLostError",

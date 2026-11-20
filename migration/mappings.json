@@ -12,6 +12,7 @@
   "imports": [
     {"source": "aiobale.Client", "target": "badking.Bot", "status": "COMPATIBLE_WITH_CHANGES", "notes": "سازنده متفاوت است: Client(dp, session_file=...) در مقابل Bot(token).", "test": "tests/test_compat.py"},
     {"source": "aiobale.Bot", "target": "badking.Bot", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "aiobale.methods.base.BaleMethod", "target": "badking.BaleMethod", "status": "COMPATIBLE_WITH_CHANGES", "notes": "پل سفارشی RPC از طریق raw_call؛ صحت فیلدها BLOCKED.", "test": "tests/test_bale_method.py"},
     {"source": "aiobale.BaleClient", "target": "badking.Bot", "status": "COMPATIBLE_WITH_CHANGES", "notes": "نام مستعار قدیمی.", "test": "tests/test_compat.py"},
     {"source": "aiobale.Dispatcher", "target": "badking.Dispatcher", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
     {"source": "aiobale.Router", "target": "badking.Router", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
