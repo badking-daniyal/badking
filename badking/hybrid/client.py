@@ -153,6 +153,7 @@ class SelfBot:
         timeout: float = 30.0,
         framing: str = "length",
         transport_factory: Callable[[], Transport] | None = None,
+        permissions: Any | None = None,
     ):
         self.ws_url = ws_url
         self.registry = registry or default_registry
@@ -160,6 +161,9 @@ class SelfBot:
         self.timeout = timeout
         self.framing = framing
         self.transport_factory = transport_factory
+        # None = بدون محدودیت (سازگاری با نسخه قبل). برای امنیت، صریحاً
+        # PermissionPolicy بده: PermissionPolicy(allow={...})
+        self.permissions = permissions
         self._phone = phone
         self._store: SessionStore | None = None
         self._session: Session | None = None
@@ -269,9 +273,14 @@ class SelfBot:
         """
         if self._transport is None:
             raise NotConnected("اول connect() صدا بزن")
+        if self.permissions is not None:
+            self.permissions.check(full_name)
         spec = self.registry.get(full_name)
         payload = encode_request(spec, kwargs)
         frame = await self._transport.request(payload, timeout=self.timeout)
+        from .reliability import raise_for_rpc_error
+
+        raise_for_rpc_error(frame)
         return decode_response(spec, frame)
 
     async def raw_call(
@@ -290,13 +299,17 @@ class SelfBot:
         """
         if self._transport is None:
             raise NotConnected("اول connect() صدا بزن")
+        if self.permissions is not None:
+            self.permissions.check(full_name)
 
         from .proto import build
 
         payload = build(fields)
         frame = await self._transport.request(payload, timeout=self.timeout)
         from .proto import decode as _decode
+        from .reliability import raise_for_rpc_error
 
+        raise_for_rpc_error(frame)
         return _decode(frame)
 
     async def probe(self, full_name: str) -> dict[str, Any]:

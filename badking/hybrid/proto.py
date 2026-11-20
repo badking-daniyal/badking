@@ -26,11 +26,15 @@ class ProtoError(Exception):
 
 
 # ---------- نوشتن ----------
-def write_varint(value: int) -> bytes:
-    """کدگذاری varint بدون علامت."""
+def _put_varint(out: bytearray, value: int) -> None:
+    """نوشتن مستقیم varint داخل bytearray — بدون تخصیص bytes میانی.
+
+    این تابع هسته بهینهسازی serialization است: نسخه قدیمی write_varint
+    هر بار یک bytearray و سپس bytes جداگانه میساخت. اینجا مستقیم به
+    بفر انتهایی مینویسیم.
+    """
     if value < 0:
         value &= (1 << 64) - 1  # two's complement برای منفی
-    out = bytearray()
     while True:
         byte = value & 0x7F
         value >>= 7
@@ -38,7 +42,14 @@ def write_varint(value: int) -> bytes:
             out.append(byte | 0x80)
         else:
             out.append(byte)
-            return bytes(out)
+            return
+
+
+def write_varint(value: int) -> bytes:
+    """کدگذاری varint بدون علامت."""
+    out = bytearray()
+    _put_varint(out, value)
+    return bytes(out)
 
 
 def read_varint(data: bytes, pos: int = 0) -> tuple[int, int]:
@@ -222,6 +233,10 @@ def build(fields: dict[int, Any]) -> bytes:
     value می‌تواند: int، bool، str، bytes، dict (با کلید عددی)، یا لیست.
     """
     out = bytearray()
+    append = out.append
+    extend = out.extend
+    put_varint = _put_varint
+
     for field, value in fields.items():
         if value is None:
             continue
@@ -230,15 +245,30 @@ def build(fields: dict[int, Any]) -> bytes:
             if v is None:
                 continue
             if isinstance(v, bool):
-                out += enc_bool(field, v)
+                put_varint(out, field << 3)          # wire type 0
+                append(1 if v else 0)
             elif isinstance(v, int):
-                out += enc_varint(field, v)
+                put_varint(out, field << 3)
+                put_varint(out, v)
             elif isinstance(v, float):
-                out += enc_double(field, v)
-            elif isinstance(v, (str, bytes, dict)):
-                out += enc_bytes(field, to_bytes(v))
+                put_varint(out, (field << 3) | 1)    # wire type 1 (fixed64)
+                extend(struct.pack("<d", v))
+            elif isinstance(v, str):
+                raw = v.encode("utf-8")
+                put_varint(out, (field << 3) | 2)    # wire type 2
+                put_varint(out, len(raw))
+                extend(raw)
+            elif isinstance(v, bytes):
+                put_varint(out, (field << 3) | 2)
+                put_varint(out, len(v))
+                extend(v)
+            elif isinstance(v, dict):
+                raw = build(v)
+                put_varint(out, (field << 3) | 2)
+                put_varint(out, len(raw))
+                extend(raw)
             else:
-                raise ProtoError(f"نوع پشتیبانی‌نشده در فیلد {field}: {type(v).__name__}")
+                raise ProtoError(f"نوع پشتیبانی‌nشده در فیلد {field}: {type(v).__name__}")
     return bytes(out)
 
 

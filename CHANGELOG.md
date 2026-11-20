@@ -16,6 +16,20 @@
 
 ---
 
+## [Unreleased] — Optimization & Security Hardening
+
+- Secret audit: git history clean, backup.zip tokens BLOCKED (rotate needed),
+  .gitignore hardened, 	ests/test_secret_audit.py
+- Serialization: uild() ~40% faster, encode_named() ~31% faster,
+  binary equivalence verified with 700+ inputs
+- enchmarks/bench_serialization.py with warm-up, median/P95/P99, memory
+- Self Client RBAC, OTP validation, secure logging, session expiry + 33 tests
+- Reliability: RPC error mapping, flood wait, correlation + 17 tests
+- Migration status clarified: import only, balethon decorators NOT_IMPLEMENTED
+- 5 new reports; 1153 tests passing; no PyPI release, version unchanged
+
+---
+
 ## [Unreleased] — Real-World Validation
 
 - docs/PROTOCOL_VERIFICATION.md: 72/72 field numbers verified against

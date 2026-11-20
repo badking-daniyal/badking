@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .proto import build, decode, get_int, get_str
+from .security import mask_phone, secure_log_context, validate_otp
 from .session import Session
 
 logger = logging.getLogger("badking.hybrid.auth")
@@ -139,7 +140,7 @@ class AuthFlow:
         if not tx:
             raise AuthError("سرور transaction_hash برنگرداند")
         retry = get_int(msg, F_RETRY_AFTER) or None
-        logger.info("کد SMS ارسال شد به %s", normalized)
+        logger.info("کد SMS ارسال شد به %s", mask_phone(normalized))
         return CodeRequest(
             transaction_hash=tx,
             phone=normalized,
@@ -149,9 +150,10 @@ class AuthFlow:
 
     async def sign_in(self, transaction_hash: str, code: str, phone: str = "") -> SignInResult:
         """تأیید کد و دریافت access_token."""
-        code = code.strip().replace(" ", "").replace("-", "")
-        if not code:
-            raise AuthError("کد تأیید خالی است")
+        try:
+            code = validate_otp(code)
+        except ValueError as exc:
+            raise AuthError(str(exc)) from exc
         payload = build({F_TRANSACTION_HASH: transaction_hash, F_CODE: code})
         frame = await self.transport.request(payload)
         msg = decode(frame)

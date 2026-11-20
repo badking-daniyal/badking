@@ -40,7 +40,7 @@ py examples/echo_bot.py --mock
 4. یک یوزرنیم بده که به `bot` ختم شود (مثلاً `my_shop_bot`).
 5. بله یک رشته مثل این می‌دهد:
    ```
-   123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw
+   YOUR_BOT_TOKEN_HERE
    ```
    **این توکن است. جایی عمومی نگذار.**
 

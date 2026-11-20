@@ -4,6 +4,27 @@
 *.env
 mybot/.env
 
+# بکاپها و فایلهای session — ممکن است حاوی توKEN/OTP/session واقعی باشند
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.bak
+*.backup
+backup*/
+*.bks
+*.session
+*.session.json
+session_*.json
+accounts.json
+tokens.json
+
+# کلیدهای خصوصی و گواهی
+*.pem
+*.key
+*.p12
+*.pfx
+
 # بایتکد و کش پایتون
 __pycache__/
 *.py[cod]
