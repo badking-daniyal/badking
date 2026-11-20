@@ -13,7 +13,7 @@
 
 | شاخص | مقدار واقعی |
 |---|---|
-| تستها | ۱۰۴۱ پاس (آفلاین) |
+| تستها | ۱۰۷۸ پاس (آفلاین) + ۴ live SKIP |
 | Exportها | ۱۹۰ |
 | پکیجها | ۳۴ |
 | نمونهها | ۲۸ |
@@ -33,7 +33,7 @@
 | 3 | بررسی رقابتی aiobale | IMPLEMENTED | `docs/COMPETITIVE_ANALYSIS.md` با جدول واقعی و بدون ادعای تأییدنشده |
 | 4 | معماری اصلی | IMPLEMENTED | Modular, async-first, ۳۴ پکیج، مرز شفاف Bot/Self |
 | 5 | Bot API | IMPLEMENTED | متدهای پیام/چت/کال بک/فایل + media group + ban/restrict |
-| 6 | Self Client | PARTIALLY_IMPLEMENTED | ۷۹ RPC، session، OTP ✅؛ صحت پروتکل BLOCKED — docs/SELF_CLIENT_AUDIT.md |
+| 6 | Self Client | TESTED (mock) / BLOCKED (live) | ۷۲/۷۲ شماره فیلد با aiobale 0.3.9 تأیید — docs/PROTOCOL_VERIFICATION.md، docs/REAL_WORLD_TESTING.md |
 | 7 | Event & Dispatcher | IMPLEMENTED | Router تو در تو، first، error isolation، DI |
 | 8 | Magic Filters | IMPLEMENTED | `F.text/photo/...`، `&`/`\|`/`~`، فیلتر سفارشی و async |
 | 9 | FSM | IMPLEMENTED | State/Group/Context، TTL، locking، recovery، ۴ storage |

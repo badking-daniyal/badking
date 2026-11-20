@@ -16,6 +16,19 @@
 
 ---
 
+## [Unreleased] — Real-World Validation
+
+- docs/PROTOCOL_VERIFICATION.md: 72/72 field numbers verified against
+  real aiobale 0.3.9 source (fixture committed with MIT license)
+- 	ests/test_protocol_verification.py: 16 tests, no guessing
+- 	ests/integration/: 14 mock integration tests + 4 live tests SKIP (BLOCKED)
+- docs/REAL_WORLD_TESTING.md, docs/COMPETITIVE_BENCHMARK.md,
+  docs/SECURITY_REVIEW.md
+- Honest benchmark: BADKING import 2.5x faster, serialization 4x slower
+- 1078 tests passing, 4 live skipped. No PyPI release.
+
+---
+
 ## [0.2.2] — 2026-11-20
 
 سه اولویت مأموریت: Self Client audit، Migration validation، ۳۹ صفحه مستندات.
