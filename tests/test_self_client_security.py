@@ -137,13 +137,39 @@ class TestRBAC:
         with pytest.raises(PermissionDenied):
             asyncio.get_event_loop().run_until_complete(attempt())
 
-    def test_client_without_policy_unchanged(self):
-        """سازگاری: بدون policy رفتار قبل حفظ میشود."""
+    def test_client_without_policy_denies_by_default(self):
+        """امنیت پیشفرض: نبود policy به معنای دسترسی نامحدود نیست."""
+        from badking.hybrid import SelfBot
+        from badking.hybrid.session import Session
+        from badking.hybrid.security import PermissionPolicy, PermissionDenied
+
+        bot = SelfBot(session=Session(access_token="x", user_id=1))
+        assert isinstance(bot.permissions, PermissionPolicy)
+        assert bot.permissions.allow == frozenset()
+        assert bot.legacy_unrestricted is False
+
+        bot._transport = object()
+        with pytest.raises(PermissionDenied):
+            asyncio.get_event_loop().run_until_complete(
+                bot.call("messaging.SendMessage",
+                         peer={}, message_id=1, content={}, chat={})
+            )
+
+    def test_legacy_mode_is_opt_in_and_warns(self):
+        """رفتار قدیمی فقط با opt-in صریح + هشدار امنیتی."""
+        import warnings
         from badking.hybrid import SelfBot
         from badking.hybrid.session import Session
 
-        bot = SelfBot(session=Session(access_token="x", user_id=1))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            bot = SelfBot(
+                session=Session(access_token="x", user_id=1),
+                legacy_unrestricted=True,
+            )
         assert bot.permissions is None
+        assert bot.legacy_unrestricted is True
+        assert any(issubclass(w.category, UserWarning) for w in caught)
 
 
 class TestSessionExpiry:

@@ -206,12 +206,15 @@ def analyze(source: str, path: str = "<string>") -> MigrationReport:
             unmapped = [n for n in names if n not in IMPORT_MAP]
             if unmapped:
                 for name in unmapped:
-                    report.warnings.append(
+                    report.unsupported.append(
                         Change(
                             line=line_no,
-                            kind="warning",
+                            kind="unsupported",
                             before=name,
-                            note="در نگاشت نیست — دستی بررسی کن",
+                            note=(
+                                "در BADKING معادل مستقیم ندارد — تبدیل نشد؛ "
+                                "دستی بررسی کن (API خیالی ساخته نمیشود)"
+                            ),
                         )
                     )
 
@@ -317,10 +320,30 @@ def migrate_source(source: str, path: str = "<string>") -> MigrationReport:
     except SyntaxError:
         pass
 
-    # importها
+    # importها — نامهای unsupported حذف و به هشدار تبدیل میشوند تا
+    # import خیالی (`from badking import Command`) ساخته نشود.
+    unsupported_names = {c.before for c in report.unsupported}
+    import_warnings: list[str] = []
+
+    def _rewrite_import(m):
+        original_names = [p.strip() for p in m.group(1).split(",")]
+        kept = []
+        dropped = []
+        for name in original_names:
+            base = name.split(" as ")[0].strip()
+            if base in unsupported_names:
+                dropped.append(name)
+            else:
+                kept.append(name)
+        line = f"from badking import {_map_import_list(', '.join(kept))}" if kept else ""
+        if dropped:
+            line += "  # migration: Unsupported: " + ", ".join(dropped) + " (دستی بررسی کن)"
+            import_warnings.extend(dropped)
+        return line
+
     result = re.sub(
         r"from\s+aiobale(?:\.\w+)*\s+import\s+([^\n]+)",
-        lambda m: "from badking import " + _map_import_list(m.group(1)),
+        _rewrite_import,
         result,
     )
     result = re.sub(r"^import\s+aiobale\s*$", "import badking", result, flags=re.MULTILINE)
@@ -344,15 +367,25 @@ def migrate_source(source: str, path: str = "<string>") -> MigrationReport:
 
 
 def _map_import_list(names: str) -> str:
-    """'Client, F, Router' → 'Bot, F, Router'"""
+    """'Client, F, Router' → 'Bot, F, Router'
+
+    نام ناشناخته **تبدیل نمیشود** تا import خیالی ساخته نشود. چنین نامی
+    توسط `analyze()` به عنوان unsupported گزارش میشود.
+    """
     parts = [p.strip() for p in names.split(",")]
     mapped = []
     for part in parts:
         # alias را نگه دار: "Client as C"
         if " as " in part:
             original, alias = part.split(" as ", 1)
-            mapped.append(f"{IMPORT_MAP.get(original.strip(), original.strip())} as {alias.strip()}")
+            original = original.strip()
+            if original not in IMPORT_MAP:
+                # import خیالی نسازیم — نام اصلی را نگه میداریم تا کاربر ببیند
+                mapped.append(f"{original} as {alias.strip()}")
+            else:
+                mapped.append(f"{IMPORT_MAP[original]} as {alias.strip()}")
         else:
+            # ناشناخته → همان نام (بدون ساخت API خیالی)
             mapped.append(IMPORT_MAP.get(part, part))
     return ", ".join(mapped)
 

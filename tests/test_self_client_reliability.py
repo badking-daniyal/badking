@@ -112,8 +112,12 @@ class TestClientErrorIntegration:
     def test_call_raises_on_server_error(self):
         from badking.hybrid import SelfBot
         from badking.hybrid.session import Session
+        from badking.hybrid.security import PermissionPolicy
 
-        bot = SelfBot(session=Session(access_token="x", user_id=1))
+        bot = SelfBot(
+            session=Session(access_token="x", user_id=1),
+            permissions=PermissionPolicy.full(),
+        )
 
         class FakeTransport:
             async def request(self, payload, timeout=None):

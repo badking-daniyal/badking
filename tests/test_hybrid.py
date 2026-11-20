@@ -468,7 +468,12 @@ class FakeTransport:
 
 
 def make_bot(responses=None):
-    bot = SelfBot(session=Session(access_token="fake.token.here", user_id=1))
+    from badking.hybrid.security import PermissionPolicy
+
+    bot = SelfBot(
+        session=Session(access_token="fake.token.here", user_id=1),
+        permissions=PermissionPolicy.full(),
+    )
     bot._transport = FakeTransport(responses)  # type: ignore
     return bot
 

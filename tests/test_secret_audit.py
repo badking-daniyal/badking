@@ -41,6 +41,31 @@ class TestGitignoreCoverage:
         for pattern in ("*.zip", "*.bak", "*.bks", "*.session", "*.pem", "*.key"):
             assert pattern in text
 
+    def test_gitignore_effectively_ignores_sensitive_paths(self):
+        """صرف وجود rule کافی نیست — git check-ignore را واقعاً میسنجم."""
+        paths = [
+            ".env", "mybot/.env", "backup.zip", "keys.pem",
+            "server.key", "session.bks", "data.session", "accounts.json",
+        ]
+        result = subprocess.run(
+            [GIT, "check-ignore", *paths], cwd=ROOT,
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        ignored = set(result.stdout.splitlines())
+        for p in paths:
+            assert p in ignored, f"{p} توسط .gitignore مسدود نشد"
+
+    def test_local_env_files_are_ignored(self):
+        """فایلهای .env محلی واقعی نباید track شوند."""
+        for rel in (".env", "mybot/.env"):
+            if (ROOT / rel).exists():
+                result = subprocess.run(
+                    [GIT, "check-ignore", "-q", rel], cwd=ROOT,
+                    capture_output=True,
+                )
+                assert result.returncode == 0, f"{rel} ignored نیست"
+
     def test_no_secret_file_tracked(self):
         tracked = git("ls-files").splitlines()
         dangerous = [

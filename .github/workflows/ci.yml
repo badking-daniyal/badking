@@ -25,5 +25,11 @@ jobs:
       - name: Lint
         run: ruff check badking/ --output-format=concise
         continue-on-error: true
-      - name: Test
-        run: pytest tests/ -q --ignore=tests/live_check.py --ignore=tests/live_e2e.py
+      - name: Secret scan (mandatory)
+        run: python scripts/ci_secret_scan.py
+      - name: Security + serialization tests (mandatory)
+        run: pytest tests/test_secret_audit.py tests/test_security_scanner.py tests/test_serialization_equivalence.py tests/test_protocol_verification.py -q
+      - name: Test (mock + unit, coverage)
+        run: pytest tests/ -q --ignore=tests/live_check.py --ignore=tests/live_e2e.py -m "not live" --cov=badking --cov-report=term-missing:skip-covered
+      - name: Live tests (explicitly skipped without credentials)
+        run: pytest tests/integration/test_self_client_live.py -q -m live --cov=badking --cov-append --cov-report=term

@@ -37,6 +37,77 @@ def validate_otp(code: str) -> str:
     return cleaned
 
 
+class OTPAttemptLimitExceeded(Exception):
+    """تعداد تلاشهای OTP از حد مجاز گذشت."""
+
+
+class OTPExpired(Exception):
+    """کد OTP منقضی شده است."""
+
+
+class OTPAlreadyUsed(Exception):
+    """کد OTP قبلاً استفاده شده است (جلوگیری از replay)."""
+
+
+@dataclass
+class OTPChallenge:
+    """یک چالش OTP — کد به صورت هش ذخیره میشود، هرگز plaintext."""
+
+    code_hash: str
+    created_at: float
+    attempts: int = 0
+    used: bool = False
+
+
+@dataclass
+class OTPGuard:
+    """محافظ OTP: محدودیت تلاش، انقضا، جلوگیری از استفاده مجدد.
+
+    Args:
+        max_attempts: حداکثر تعداد تلاش (پیشفرض ۵)
+        ttl_seconds: عمر چالش (پیشفرض ۱۲۰ ثانیه)
+    """
+
+    max_attempts: int = 5
+    ttl_seconds: float = 120.0
+    _challenges: dict[str, OTPChallenge] = field(default_factory=dict, repr=False)
+
+    @staticmethod
+    def _hash(code: str) -> str:
+        return hashlib.sha256(code.encode()).hexdigest()
+
+    def issue(self, challenge_id: str, code: str, now: float | None = None) -> None:
+        """ایجاد چالش جدید. کد plaintext ذخیره نمیشود."""
+        now = now if now is not None else time.time()
+        self._challenges[challenge_id] = OTPChallenge(
+            code_hash=self._hash(validate_otp(code)),
+            created_at=now,
+        )
+
+    def verify(
+        self, challenge_id: str, code: str, now: float | None = None
+    ) -> bool:
+        """بررسی کد. در صورت موفقیت چالش را «مصرفشده» علامت میزند."""
+        now = now if now is not None else time.time()
+        ch = self._challenges.get(challenge_id)
+        if ch is None:
+            return False
+        if ch.used:
+            raise OTPAlreadyUsed("کد قبلاً استفاده شده است")
+        if now - ch.created_at > self.ttl_seconds:
+            raise OTPExpired("کد منقضی شده است")
+        if ch.attempts >= self.max_attempts:
+            raise OTPAttemptLimitExceeded("تعداد تلاشها بیش از حد مجاز است")
+        ch.attempts += 1
+        if hmac.compare_digest(ch.code_hash, self._hash(validate_otp(code))):
+            ch.used = True
+            return True
+        return False
+
+    def clear(self, challenge_id: str) -> None:
+        self._challenges.pop(challenge_id, None)
+
+
 # ---------- Secure logging ----------
 
 def mask_phone(phone: str) -> str:
@@ -90,6 +161,10 @@ def secure_log_context(**kwargs: Any) -> dict[str, str]:
 
 
 # ---------- RBAC ----------
+
+class InsecureLegacyModeWarning(UserWarning):
+    """هشدار: حالت legacy بدون محدودیت مجوز فعال است."""
+
 
 # مجوزهای شناختهشده self-bot. پیشفرض: هیچ مجوزی داده نمیشود.
 ALL_PERMISSIONS = frozenset({

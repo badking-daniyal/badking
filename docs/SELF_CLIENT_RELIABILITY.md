@@ -1,55 +1,65 @@
-# Self Client Reliability — وضعیت واقعی
+# Self Client Reliability Audit — FINAL
 
 **تاریخ:** 2026-11-20
-**قاعده:** هر قابلیت فقط در صورتی IMPLEMENTED نامیده میشود که تست مربوطه وجود داشته باشد.
+**قاعده:** هر مورد دقیقاً یکی از وضعیتها را دارد. Mock از Live جدا است.
 
 ---
 
-| قابلیت | وضعیت | شاهد (فایل / تست) |
+## جدول وضعیت
+
+| مورد | وضعیت | شاهد |
 |---|---|---|
-| Connection Recovery | IMPLEMENTED | `transport.py::_handle_drop` — backoff نمایی ۱→۳۰s، حداکثر ۵ تلاش؛ `test_hybrid.py` |
-| Request Timeout | IMPLEMENTED | `transport.py::request` → `RpcTimeout`؛ `test_self_client_reliability.py` |
-| Retry Policy | IMPLEMENTED | `resilience.py::RetryPolicy` — ۴ تست در `test_resilience.py` |
-| Flood Wait | IMPLEMENTED | `RateState.learn()` + `parse_rpc_error` → `retry_after`؛ ۳ تست |
-| RPC Error Mapping | IMPLEMENTED | `reliability.py::raise_for_rpc_error` → `RpcFailed(code, retry_after)`؛ ۶ تست |
-| Request Correlation | IMPLEMENTED | `_stamp_req_id` / `_peek_req_id` + Future dict؛ ۳ تست |
-| `req_id` | IMPLEMENTED | فیلد 1 varint (قرارداد حدسی — مستند در `PROTOCOL_VERIFICATION.md`) |
-| Connection Framing | IMPLEMENTED | `length` و `raw` — ۵ تست |
-| Graceful Shutdown | IMPLEMENTED | `transport.py::close()` — idempotent، fail pending، cancel reader؛ ۱ تست |
-| Circuit Breaker | IMPLEMENTED | `resilience.py` — تست در `test_resilience.py` |
+| Connection lifecycle | IMPLEMENTED | `transport.py::connect/close`، تست shutdown |
+| Timeout handling | IMPLEMENTED | `request()` → `RpcTimeout`، ۲ تست |
+| Retry policy | IMPLEMENTED | `resilience.py::RetryPolicy`، ۴ تست |
+| Flood wait | IMPLEMENTED | `RateState` + `retry_after` در `RpcFailed` |
+| RPC error mapping | IMPLEMENTED | `reliability.py`، ۶ تست |
+| Correlation ID | IMPLEMENTED | `_stamp_req_id`/`_peek_req_id` + Future dict |
+| Request ID (`req_id`) | PARTIALLY_IMPLEMENTED | فیلد 1 varint (قرارداد حدسی، روی wire تأیید نشده) |
+| Binary framing | IMPLEMENTED | `length` + `raw`، ۵ تست |
+| Graceful shutdown | IMPLEMENTED | `close()` idempotent، ۱ تست |
+| Session expiration | PARTIALLY_IMPLEMENTED | `Session.is_valid()` چک `exp` میکند ولی **امضا verify نمیشود**؛ `SessionExpiry` جداگانه تست شده ولی به client متصل نیست |
+| Session recovery | PARTIALLY_IMPLEMENTED | save/load/encrypt تست شده (Mock)؛ recovery از سرور BLOCKED |
+| Secure logging | IMPLEMENTED | `mask_phone/token/hash` + تست لاگ |
+| OTP attempt/expiry/reuse | IMPLEMENTED | `OTPGuard` + ۸ تست (اما به `AuthFlow` متصل نیست → PARTIALLY در عمل) |
+| JWT signature verification | NOT_IMPLEMENTED | فقط payload decode بدون verify |
 | Message dedup | NOT_IMPLEMENTED | — |
-| Server-side session recovery | BLOCKED | نیاز به حساب واقعی |
+| Live wire framing / req_id | BLOCKED | نیاز به حساب واقعی |
 
 ---
 
-## جزئیات پیادهسازیهای جدید
+## جزئیات مهم
 
-### RPC Error Mapping
-
-پاسخ سرور حالا قبل از decode بررسی میشود:
+### Session Expiration — PARTIALLY_IMPLEMENTED
 
 ```python
-frame = await transport.request(payload)
-raise_for_rpc_error(frame)   # ← خطاهای 429/401/503 به RpcFailed تبدیل میشوند
-return decode_response(spec, frame)
+Session.is_valid()       # ✅ exp را از payload میخواند
+Session.token_expiry()   # ⚠️ بدون verify امضا ("بدون verify امضا" صریحاً در docstring)
+SessionExpiry            # ✅ کلاس جداگانه + ۵ تست، ولی client از آن استفاده نمیکند
 ```
 
-کدهای شناختهشده: `429` (flood), `400/401/403` (auth), `500/502/503/504` (server).
+### OTP — IMPLEMENTED (ماژول) / PARTIALLY (اتصال)
 
-### Flood Wait
+`OTPGuard` محدودیت تلاش، انقضا و جلوگیری از replay دارد (۸ تست) ولی `AuthFlow`
+هنوز از آن استفاده نمیکند — `AuthFlow.sign_in` فقط `validate_otp` (format) را صدا میزند.
 
-- `RateState` از قبل نرخ ارسال را محدود میکند
-- حالا `retry_after` سرور هم توسط `parse_rpc_error` استخراج میشود
-- `RpcFailed.retry_after` در اختیار کاربر قرار میگیرد تا طبق آن صبر کند
+### req_id — PARTIALLY_IMPLEMENTED
 
-### تستها
+`REQ_ID_FIELD = 1` یک **قرارداد حدسی** است (در `PROTOCOL_VERIFICATION.md` مستند).
+تا زمانی که ترافیک واقعی capture نشود، نمیتوان ادعا کرد سرور دقیقاً از فیلد 1 استفاده میکند.
 
-`tests/test_self_client_reliability.py` — ۱۷ تست:
-- ۵ تست framing (تک قاب، قاب ناقص، دو قاب)
-- ۳ تست correlation
-- ۶ تست error mapping
-- ۱ تست integration (client → RpcFailed)
-- ۲ تست timeout/shutdown
+---
+
+## تستها: Mock در برابر Live
+
+| دسته | فایل | تعداد | وضعیت |
+|---|---|---:|---|
+| Mock integration | `tests/integration/test_self_client_mock.py` | ۱۳ | ✅ اجرا میشود |
+| Live integration | `tests/integration/test_self_client_live.py` | ۵ | ⛔ SKIP/BLOCKED بدون حساب آزمایشی |
+| Reliability unit | `tests/test_self_client_reliability.py` | ۱۷ | ✅ |
+| Security unit | `tests/test_self_client_security.py` + `test_otp_security.py` | ~۴۰ | ✅ |
+
+**هیچ تست Mockی به عنوان Live معرفی نشده است.**
 
 ---
 
@@ -57,9 +67,19 @@ return decode_response(spec, frame)
 
 | مورد | دلیل |
 |---|---|
-| صحت `req_id` روی wire | نیاز به capture ترافیک واقعی |
-| Connection Recovery در قطع واقعی اینترنت | نیاز به اتصال زنده |
-| Flood Wait واقعی سرور | نیاز به حساب آزمایشی |
-| Server-side session restore | نیاز به حساب آزمایشی |
+| صحت `req_id` روی wire | capture ترافیک لازم است |
+| Connection recovery در قطع واقعی | اتصال زنده لازم است |
+| Flood wait واقعی سرور | حساب آزمایشی لازم است |
+| Server-side session restore | حساب آزمایشی لازم است |
+| OTP زنده (SMS) | شماره + SMS لازم است |
 
-هیچیک از اینها ادعای TESTED نشدهاند.
+---
+
+## وضعیت کلی
+
+| مورد | وضعیت |
+|---|---|
+| Reliability core (framing/timeout/retry/error/shutdown) | ✅ IMPLEMENTED + TESTED |
+| Session/OTP تکمیل اتصال | ⚠️ PARTIALLY_IMPLEMENTED |
+| JWT verify | ❌ NOT_IMPLEMENTED |
+| Live verification | ⛔ BLOCKED |

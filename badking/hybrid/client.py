@@ -153,17 +153,37 @@ class SelfBot:
         timeout: float = 30.0,
         framing: str = "length",
         transport_factory: Callable[[], Transport] | None = None,
-        permissions: Any | None = None,
+        permissions: PermissionPolicy | None = None,
+        legacy_unrestricted: bool = False,
     ):
+        import warnings
+        from .security import InsecureLegacyModeWarning, PermissionPolicy
+
         self.ws_url = ws_url
         self.registry = registry or default_registry
         self.auto_reconnect = auto_reconnect
         self.timeout = timeout
         self.framing = framing
         self.transport_factory = transport_factory
-        # None = بدون محدودیت (سازگاری با نسخه قبل). برای امنیت، صریحاً
-        # PermissionPolicy بده: PermissionPolicy(allow={...})
-        self.permissions = permissions
+        # امنیت پیشفرض: deny by default.permissions=None به معنای «همه مجاز»
+        # نیست — بلکه یک سیاست خالی است. رفتار قدیمی فقط با opt-in صریح
+        # legacy_unrestricted=True در دسترس است، آن هم با هشدار امنیتی.
+        if permissions is not None:
+            self.permissions = permissions
+            self.legacy_unrestricted = False
+        elif legacy_unrestricted:
+            warnings.warn(
+                "SelfBot(legacy_unrestricted=True): تمام محدودیتهای مجوز "
+                "غیرفعالاند. این حالت فقط برای سازگاری با کد قدیم است و "
+                "برای محیط Production توصیه نمیشود.",
+                InsecureLegacyModeWarning,
+                stacklevel=2,
+            )
+            self.permissions = None
+            self.legacy_unrestricted = True
+        else:
+            self.permissions = PermissionPolicy()
+            self.legacy_unrestricted = False
         self._phone = phone
         self._store: SessionStore | None = None
         self._session: Session | None = None

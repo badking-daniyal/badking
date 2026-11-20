@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### FINAL Security & Engineering Validation (2026-11-20)
+- **Critical:** تناقض `permissions=None` رفع شد — پیشفرض Deny by Default، Legacy فقط با `legacy_unrestricted=True` + هشدار
+- `OTPGuard` اضافه شد: محدودیت تلاش، انقضا، جلوگیری از replay (کد هش میشود)
+- Secret scanner اجباری CI (`scripts/ci_secret_scan.py`) + تست اثربخشی واقعی `.gitignore`
+- Migration: باگ import خیالی (`from badking import Command`) رفع شد — API خیالی ساخته نمیشود
+- Benchmark نهایی: median/P95/stddev، ۴ اندازه ورودی، مقایسه با aiobale
+- ۶ گزارش نهایی + تستهای مربوطه
+- **تستها:** ۱۱۸۳ پاس + ۵ live SKIP. PyPI منتشر نشد، نسخه 0.2.2 بدون تغییر
+
 ### Planned
 - انتشار روی PyPI
 - تست زنده self-bot (نیاز به شماره واقعی)

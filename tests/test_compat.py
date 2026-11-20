@@ -42,8 +42,10 @@ class TestAnalyze:
 
     def test_unknown_name_warned(self):
         report = analyze("from aiobale import TotallyUnknownThing\n")
-        assert report.warnings
-        assert any("TotallyUnknownThing" in w.before for w in report.warnings)
+        # نام ناشناخته صریحاً به عنوان unsupported گزارش میشود (نه import خیالی)
+        reported = list(report.warnings) + list(report.unsupported)
+        assert reported
+        assert any("TotallyUnknownThing" in w.before for w in reported)
 
     def test_unsupported_method_reported(self):
         report = analyze("bot.register_next_step_handler(x)\n")
