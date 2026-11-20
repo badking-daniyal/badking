@@ -20,7 +20,7 @@
 | RPCها | ۷۹ متد + ۶۵ اسکیمای پاسخ |
 | CI | سبز روی Python ۳.۹ / ۳.۱۰ / ۳.۱۱ / ۳.۱۲ |
 | سایت مستندات | زنده — docs.badking.ir |
-| آخرین commit | `9889a21` (پس از Media Download: commit جدید) |
+| آخرین commit | `82a9f20` (Media Download) |
 | دانلود رسانه SelfBot | IMPLEMENTED + 31 تست Mock — رفتار سرور BLOCKED |
 
 ---
