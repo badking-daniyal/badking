@@ -9,6 +9,17 @@
 
 ## [Unreleased]
 
+### Session Security & Live Client Validation (2026-11-20)
+- **Session Encryption به AES-256-GCM (AEAD) ارتقا یافت** — فرمت نسخهبندی شده `BKS2`، nonce تصادفی ۱۲ بایتی، Authentication Tag، AAD روی header، PBKDF2-SHA256 200k
+- Migration امن و کنترلشده: تشخیص فرمت قدیمی، بکاپ `0600`، `migrate_to_v2` idempotent، `rollback_migration` بایت به بایت، بدون از دست رفتن داده در شکست
+- خواندن فرمتهای قدیمی `BKS1` (plain و XOR+HMAC) حفظ شد — sessionهای موجود نشکستند
+- خطاهای خراب session به `SessionError` امن تبدیل میشوند (بدون افشای محتوا)
+- وابستگی `cryptography>=42` به extras `hybrid` / `all`
+- **رفع باگ پروتکل:** `req_id` دیگر پیشفرض روی فیلد ۱ payload نوشته نمیشود (فیلد ۱ داده واقعی است) — correlation داخلی FIFO جایگزین شد
+- **رفع باگ `iter_dialogs`:** cursor از `sortDate` به جای شمارش ردیف، با محافظت چرخه
+- زیرساخت Live Testing واقعی: ۵ تست opt-in، ماسک اطلاعات حساس، بدون عملیات مخرب (بدون حساب → SKIP)
+- ۲۲ تست Session security + ۴ تست Client API audit — نسخه 0.2.2 بدون تغییر، PyPI منتشر نشد
+
 ### Security Completion Phase (2026-11-20)
 - **JWT Verification واقعی** با PyJWT — الگوریتم محدود، جلوگیری از Algorithm Confusion، رد none/malformed/expired/nbf/iss/aud، خطاهای امن بدون نشت توکن
 - `OTPGuard` حالا در `AuthFlow` و `SelfBot.connect` استفاده میشود (حالت blind: تلاش/انقضا/replay؛ صحت کد توسط سرور)

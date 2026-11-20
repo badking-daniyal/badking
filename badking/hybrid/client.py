@@ -1057,14 +1057,17 @@ class SelfBot:
 
         LoadDialogs{1: limit, 2: offset} → {3: [PeerData]}
         """
-        offset = 0
+        # offset_date یک فیلد HISTORY (ثانیه) است، نه شمارش ردیف.
+        # cursor را از sortDate آخرین گفتگو میگیریم (schema: PeerData.field 3).
+        offset_date = 0
+        seen_cursors: set[int] = set()
         fetched = 0
         while True:
             want = batch if limit is None else min(batch, limit - fetched)
             if want <= 0:
                 return
             resp = await self.call(
-                "messaging.LoadDialogs", limit=want, offset_date=offset
+                "messaging.LoadDialogs", limit=want, offset_date=offset_date
             )
             rows = resp.get("dialogs") or []
             if not rows:
@@ -1078,7 +1081,21 @@ class SelfBot:
                     return
             if len(rows) < want:
                 return
-            offset += len(rows)
+            # جلوگیری از چرخه: اگر سرور همان cursor را برگرداند، متوقف شو.
+            last = rows[-1]
+            raw_cursor = (
+                last.get("sortDate") or last.get("date") or 0
+                if isinstance(last, dict)
+                else 0
+            )
+            try:
+                new_cursor = int(raw_cursor)
+            except (TypeError, ValueError):
+                return
+            if not new_cursor or new_cursor in seen_cursors:
+                return
+            seen_cursors.add(new_cursor)
+            offset_date = new_cursor
 
     def _parse_dialog(self, raw: Any) -> Dialog:
         """تبدیل PeerData به Dialog.
@@ -1111,7 +1128,7 @@ class SelfBot:
             peer=peer,
             unread=int(raw.get("unreadCount", 0) or 0),
             last_message=last_text,
-            last_date=float(raw.get("date", 0) or 0),
+            last_date=float(raw.get("sortDate") or raw.get("date") or 0),
             pinned=False,
         )
 

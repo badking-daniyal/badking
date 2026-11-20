@@ -138,6 +138,7 @@ class Transport:
         timeout: float = 30.0,
         max_reconnect: int = 5,
         ping_interval: float = 25.0,
+        stamp_req_id: bool = False,
     ):
         if websockets is None:  # pragma: no cover
             raise TransportError(
@@ -151,6 +152,11 @@ class Transport:
         self.max_reconnect = max_reconnect
         self.ping_interval = ping_interval
         self._frame, self._unframe = FRAMINGS[framing]
+        # req_id به طور پیشفرض روی wire نوشته نمیشود: فیلد ۱ در اکثر RPCها
+        # داده واقعی است (peer/seq/data). تا زمانی که پروتکل سرور با شواهد
+        # واقعی تأیید شود، correlation داخلی (FIFO) ایمنتر است.
+        self.stamp_req_id = stamp_req_id
+        self._fifo: list[str] = []
         self._ws: Any = None
         self._buf = b""
         self._pending: dict[str, asyncio.Future] = {}
@@ -203,6 +209,8 @@ class Transport:
             if not fut.done():
                 fut.set_exception(exc)
         self._pending.clear()
+        if hasattr(self, "_fifo"):
+            self._fifo.clear()
 
     # ---------- خواندن ----------
     async def _read_loop(self) -> None:
@@ -232,12 +240,19 @@ class Transport:
 
     async def _dispatch(self, frame: bytes) -> None:
         """تحویل قاب به Future مربوطه یا به callback به‌روزرسانی."""
-        req_id = _peek_req_id(frame)
+        req_id = _peek_req_id(frame) if self.stamp_req_id else None
         if req_id and req_id in self._pending:
             fut = self._pending.pop(req_id)
             if not fut.done():
                 fut.set_result(frame)
             return
+        if not getattr(self, "stamp_req_id", False) and getattr(self, "_fifo", None):
+            # پاسخ به ترتیب ورود، به قدیمیترین درخواست در صف تعلق میگیرد.
+            req_id = self._fifo.pop(0)
+            fut = self._pending.pop(req_id, None)
+            if fut is not None and not fut.done():
+                fut.set_result(frame)
+                return
         if self.on_update is not None:
             try:
                 await self.on_update(frame)
@@ -290,7 +305,13 @@ class Transport:
 
         fut: asyncio.Future = asyncio.get_event_loop().create_future()
         self._pending[req_id] = fut
-        body = _stamp_req_id(payload, req_id)
+        if self.stamp_req_id:
+            body = _stamp_req_id(payload, req_id)
+        else:
+            # correlation داخلی: ترتیب پاسخها همان ترتیب درخواستها فرض میشود
+            # (WebSocket تککاناله). payload روی wire دست نخورده میماند.
+            self._fifo.append(req_id)
+            body = payload
         try:
             async with self._lock:
                 assert self._ws is not None
@@ -300,9 +321,13 @@ class Transport:
             return await asyncio.wait_for(fut, timeout=timeout)
         except asyncio.TimeoutError:
             self._pending.pop(req_id, None)
+            if req_id in self._fifo:
+                self._fifo.remove(req_id)
             raise RpcTimeout(f"پاسخ در {timeout} ثانیه نرسید (req_id={req_id})")
         except Exception:
             self._pending.pop(req_id, None)
+            if req_id in self._fifo:
+                self._fifo.remove(req_id)
             raise
 
     async def send_fire_and_forget(self, payload: bytes) -> None:
