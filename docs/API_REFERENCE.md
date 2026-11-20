@@ -62,7 +62,7 @@ async with SelfBot(session=session) as sb:
 `kick_user`, `get_members`, `get_invite_link`, `get_group_preview`,
 `get_contacts`, `add_contact`, `block_user`, `unblock_user`, `edit_name`,
 `edit_about`, `check_username`, `get_messages`, `iter_messages`,
-`get_dialogs`, `iter_dialogs`, `report_chat`, `upvote`, `transfer_money`,
+`get_dialogs`, `iter_dialogs`, `report_chat`, `upvote`,
 `raw_call`, `probe`, `describe`, `search`
 
 ---

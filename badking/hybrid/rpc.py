@@ -102,9 +102,22 @@ def make_peer(peer_type: str | int, peer_id: int, access_hash: int = 0) -> dict[
 
 
 def make_chat(chat_type: str | int, chat_id: int) -> dict[str, Any]:
-    """ساخت دیکشنری Chat (فیلد ۶ در SendMessage)."""
+    """ساخت دیکشنری Chat (فیلد ۶ در SendMessage).
+
+    دو نگاشت را میپذیرد:
+    - ``CHAT_TYPE`` (private/group/channel/...) — نامهای استاندارد Chat.
+    - ``PEER_TYPE`` (user/chat/group/channel) — چون ``Peer.type`` همین
+     .names را دارد و ``send_message`` مستقیم آن را پاس میدهد.
+
+    بدون این، ``make_chat("user", ...)`` و ``make_chat("chat", ...)``
+    خطای ValueError میدادند و ارسال پیام به کاربر/چت ناممکن بود.
+    """
     if isinstance(chat_type, str):
-        ctype = CHAT_TYPE.get(chat_type.lower())
+        key = chat_type.lower()
+        ctype = CHAT_TYPE.get(key)
+        if ctype is None:
+            # Peer.type از PEER_TYPE میآید — آن را هم بپذیر
+            ctype = PEER_TYPE.get(key)
         if ctype is None:
             raise ValueError(f"نوع chat ناشناخته: {chat_type}")
     else:

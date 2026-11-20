@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -166,7 +167,6 @@ class SelfBot:
         self._handlers: list[tuple[Callable[[Message], bool], Callable]] = []
         self._raw_handlers: list[Callable] = []
         self._me: Peer | None = None
-        self._my_id: int = int(getattr(self._session, "user_id", 0) or 0)
         self._peer_cache: dict[str, Peer] = {}
 
         if isinstance(session, Session):
@@ -177,6 +177,10 @@ class SelfBot:
         elif password is not None:
             self._store = SessionStore("badking.session", password=password)
             self._session = self._store.get()
+
+        # باید بعد از انتقال session محاسبه شود — قبل از آن self._session
+        # هنوز None است و _my_id همیشه 0 میشد (get_me و is_out خراب).
+        self._my_id: int = int(getattr(self._session, "user_id", 0) or 0)
 
     # ---------- چرخه حیات ----------
     async def connect(self) -> "SelfBot":
@@ -232,6 +236,7 @@ class SelfBot:
             )
             result = await flow.sign_in(req.transaction_hash, code, phone=req.phone)
             self._session = result.session
+            self._my_id = int(result.session.user_id or 0)
             self._store.put(result.session)
         finally:
             await transport.close()
@@ -295,25 +300,33 @@ class SelfBot:
         return _decode(frame)
 
     async def probe(self, full_name: str) -> dict[str, Any]:
-        """بررسی وجود یک RPC روی سرور.
+        """Check whether a method exists in the LOCAL registry.
 
-        payload خالی می‌فرستد و خطای سرور را برمی‌گرداند. اگر متد وجود
-        داشته باشد، خطای «فیلد لازم» می‌دهد؛ اگر نداشته باشد،
-        «unimplemented». برای کشف متدهای مستندنشده.
+        Honest note: Bale's internal protocol does not transmit a method
+        name on the wire (only field numbers and req_id), so "probing the
+        server" by sending an empty payload was meaningless and its result
+        was guessed from error strings. This method now checks only the
+        local registry and states clearly that server verification is
+        BLOCKED.
         """
-        if self._transport is None:
-            raise NotConnected("اول connect() صدا بزن")
-
-        service, _, method = full_name.rpartition(".")
         try:
-            frame = await self._transport.request(b"", timeout=self.timeout)
-            return {"exists": True, "raw_len": len(frame)}
-        except Exception as exc:  # noqa: BLE001
-            msg = str(exc).lower()
-            exists = not any(
-                k in msg for k in ("unimplemented", "unknown method", "not found")
-            )
-            return {"exists": exists, "error": str(exc)}
+            spec = self.registry.get(full_name)
+        except KeyError:
+            return {
+                "exists": False,
+                "in_registry": False,
+                "server_verified": False,
+                "note": "Method not in local registry. Server verification BLOCKED.",
+            }
+        return {
+            "exists": True,
+            "in_registry": True,
+            "server_verified": False,
+            "name": spec.full_name,
+            "doc": spec.doc,
+            "note": "In local registry. Field-number correctness cannot be "
+                    "verified without a real account (BLOCKED).",
+        }
 
     def describe(self, full_name: str) -> dict[str, Any]:
         """اسکیمای یک متد: فیلدها، شماره‌ها، پاسخ، و هشدار خطر."""
@@ -370,10 +383,22 @@ class SelfBot:
     async def edit_profile(
         self, name: str | None = None, username: str | None = None, about: str | None = None
     ) -> bool:
-        resp = await self.call(
-            "users.EditProfile", name=name, username=username, about=about
-        )
-        return bool(resp.get("ok"))
+        """تغییر همزمان نام، یوزرنیم و بیو.
+
+        رجیستری بله متد واحد EditProfile ندارد؛ از سه متد جداگانه استفاده
+        میکنیم و فقط در صورتی موفق میگوییم که همه موفق باشند.
+        """
+        ok = True
+        if name is not None:
+            ok = await self.edit_name(name) and ok
+        if username is not None:
+            try:
+                await self.call("user.EditNickName", nick_name={"value": username})
+            except Exception:  # noqa: BLE001
+                ok = False
+        if about is not None:
+            ok = await self.edit_about(about) and ok
+        return ok
 
     # ---------- peer ----------
     async def get_entity(self, ref: str | int | Peer) -> Peer:
@@ -454,11 +479,39 @@ class SelfBot:
             ),
             chat=make_chat(peer.type, peer.id),
         )
+        def _as_int(value, default=0):
+            """پاسخها گاهی bytes و گاهی intاند — هر دو را بگیر."""
+            if value in (None, "", 0):
+                return default
+            if isinstance(value, bytes):
+                try:
+                    return int.from_bytes(value, "big", signed=True)
+                except Exception:  # noqa: BLE001
+                    return default
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return default
+
+        def _as_float(value, default=0.0):
+            if value in (None, ""):
+                return default
+            if isinstance(value, bytes):
+                # date معمولاً varint است
+                return float(_as_int(value, int(default)))
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
+        # SendMessage پاسخ {seq:1, date:2} دارد — seq همان message_id است.
+        server_id = _as_int(resp.get("seq") or resp.get("message_id"), 0)
+
         return Message(
-            id=int(resp.get("message_id", rid) or rid),
+            id=server_id or rid,
             text=text,
             chat_id=peer.id,
-            date=float(resp.get("date", time.time()) or time.time()),
+            date=_as_float(resp.get("date"), time.time()),
             peer=peer,
             is_out=True,
             raw=resp,
@@ -489,12 +542,32 @@ class SelfBot:
             chat=make_chat(peer.type, peer.id),
             send_type={"type": 1},
         )
-        file_id = int(up.get("file_id", 0) or 0)
-        access_hash = int(up.get("access_hash", 0) or 0)
-        upload_url = up.get("url") or ""
+        # پاسخ آپلود میتواند کلیدهای camelCase یا snake_case داشته باشد
+        def up_get(*keys, default=0):
+            for key in keys:
+                value = up.get(key)
+                if value not in (None, "", 0):
+                    return value
+            return default
 
-        if upload_url:
-            await self._upload_bytes(upload_url, path)
+        def to_int(value, default=0):
+            if isinstance(value, bytes):
+                return int.from_bytes(value, "big", signed=True) if value else default
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return default
+
+        file_id = to_int(up_get("file_id", "fileId"), 0)
+        access_hash = to_int(up_get("access_hash", "accessHash"), 0)
+        upload_url = str(up_get("url", "uploadUrl", default="") or "")
+
+        if not upload_url:
+            raise SelfBotError(
+                "سرور URL آپلود نداد — فایل ارسال نشد. "
+                "اسکیمای GetNasimFileUploadUrl ممکن است تغییر کرده باشد."
+            )
+        await self._upload_bytes(upload_url, path)
 
         rid = int(time.time() * 1000)
         resp = await self.call(
@@ -506,11 +579,30 @@ class SelfBot:
             ),
             chat=make_chat(peer.type, peer.id),
         )
+        def _date(value):
+            if isinstance(value, bytes):
+                return float(int.from_bytes(value, "big", signed=True)) if value else time.time()
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return time.time()
+
+        server_id = 0
+        for key in ("seq", "message_id"):
+            value = resp.get(key)
+            if value:
+                server_id = (
+                    int.from_bytes(value, "big", signed=True)
+                    if isinstance(value, bytes)
+                    else int(value)
+                )
+                break
+
         return Message(
-            id=int(resp.get("message_id", rid) or rid),
+            id=server_id or rid,
             text=caption or "",
             chat_id=peer.id,
-            date=float(resp.get("date", time.time()) or time.time()),
+            date=_date(resp.get("date")),
             peer=peer,
             is_out=True,
             raw=resp,
@@ -518,15 +610,25 @@ class SelfBot:
         )
 
     async def _upload_bytes(self, url: str, path: str) -> None:
-        """آپلود فایل به URL داده‌شده."""
+        """آپلود فایل به URL داده‌شده.
+
+        هر خطا صریحاً پرتاب میشود — آپلود ناموفق نباید پنهان شود و
+        پیامی با فایل ID صفر ارسال گردد.
+        """
         try:
             import httpx
-        except ImportError:  # pragma: no cover
-            logger.warning("httpx نصب نیست؛ آپلود انجام نشد")
-            return
-        async with httpx.AsyncClient(timeout=120) as client:
-            with open(path, "rb") as fh:
-                await client.post(url, content=fh.read())
+        except ImportError as exc:  # pragma: no cover
+            raise SelfBotError(
+                "برای آپلود فایل در self-bot به httpx نیاز است: pip install httpx"
+            ) from exc
+
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                with open(path, "rb") as fh:
+                    response = await client.post(url, content=fh.read())
+                response.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            raise SelfBotError(f"آپلود فایل نشد: {exc}") from exc
 
     async def edit_message(
         self, ref: str | int | Peer, message_id: int, text: str
@@ -552,7 +654,10 @@ class SelfBot:
             message_ids=message_ids,
             just_me={"value": not revoke},
         )
-        return bool(resp) or True
+        # پاسخ DeleteMessage میتواند خالی باشد (پروتکل چیزی برنمیگرداند).
+        # خطا از طریق exception مشخص میشود، نه پاسخ خالی — پس空 دیکت
+        # را هم موفق میشماریم، ولی برخلاف قبل همیشه True برنمیگردانیم.
+        return True if resp is not None else False
 
     async def forward_messages(
         self,
@@ -698,10 +803,17 @@ class SelfBot:
             restriction=0,
         )
 
+    @staticmethod
+    def _short_peer(ref: "str | int | Peer") -> dict:
+        """تبدیل Peer به ShortPeer ({id, accessHash}) مطابق اسکیمای گروهها."""
+        if isinstance(ref, Peer):
+            return {"id": int(ref.id), "accessHash": int(ref.access_hash or 0)}
+        return {"id": int(ref), "accessHash": 0}
+
     async def get_group(self, ref: str | int | Peer) -> dict:
         """اطلاعات کامل گروه."""
         peer = await self.get_entity(ref)
-        return await self.call("groups.GetFullGroup", peer=peer.to_dict())
+        return await self.call("groups.GetFullGroup", group=self._short_peer(peer))
 
     async def join_group(self, token: str) -> dict:
         """ورود به گروه با لینک دعوت."""
@@ -710,7 +822,11 @@ class SelfBot:
     async def leave_group(self, ref: str | int | Peer) -> bool:
         """ترک گروه."""
         peer = await self.get_entity(ref)
-        await self.call("groups.LeaveGroup", peer=peer.to_dict())
+        await self.call(
+            "groups.LeaveGroup",
+            group=self._short_peer(peer),
+            random_id=random.randint(1, 2**62),
+        )
         return True
 
     async def invite_users(
@@ -720,7 +836,8 @@ class SelfBot:
         peer = await self.get_entity(ref)
         return await self.call(
             "groups.InviteUsers",
-            peer=peer.to_dict(),
+            group=self._short_peer(peer),
+            random_id=random.randint(1, 2**62),
             users=[{"id": u, "accessHash": 0} for u in user_ids],
         )
 
@@ -728,7 +845,10 @@ class SelfBot:
         """اخراج کاربر."""
         peer = await self.get_entity(ref)
         await self.call(
-            "groups.KickUser", peer=peer.to_dict(), user_id=user_id
+            "groups.KickUser",
+            group=self._short_peer(peer),
+            random_id=random.randint(1, 2**62),
+            user={"id": int(user_id), "accessHash": 0},
         )
         return True
 
@@ -736,13 +856,13 @@ class SelfBot:
         """لیست اعضای گروه."""
         peer = await self.get_entity(ref)
         return await self.call(
-            "groups.LoadMembers", peer=peer.to_dict(), limit=limit
+            "groups.LoadMembers", group=self._short_peer(peer), limit=limit
         )
 
     async def get_invite_link(self, ref: str | int | Peer) -> str:
         """ساخت لینک دعوت."""
         peer = await self.get_entity(ref)
-        resp = await self.call("groups.GetGroupInviteURL", peer=peer.to_dict())
+        resp = await self.call("groups.GetGroupInviteURL", group=self._short_peer(peer))
         return str(resp.get("url", "") or "")
 
     # ---------- مخاطبین ----------
@@ -750,21 +870,18 @@ class SelfBot:
         """لیست مخاطبین."""
         return await self.call("user.GetContacts")
 
-    async def add_contact(self, phone: str, name: str) -> dict:
-        """افزودن مخاطب."""
-        return await self.call(
-            "user.AddContact",
-            request={"phoneNumber": int(phone), "name": {"value": name}},
-        )
+    async def add_contact(self, user_id: int, name: str) -> dict:
+        """افزودن مخاطب با آیدی کاربر."""
+        return await self.call("user.AddContact", user_id=int(user_id), type=0)
 
     async def block_user(self, user_id: int) -> bool:
         """مسدود کردن کاربر."""
-        await self.call("user.BlockUser", user_id=user_id)
+        await self.call("user.BlockUser", peer={"id": int(user_id), "type": 1})
         return True
 
     async def unblock_user(self, user_id: int) -> bool:
         """رفع مسدودی."""
-        await self.call("user.UnblockUser", user_id=user_id)
+        await self.call("user.UnblockUser", peer={"id": int(user_id), "type": 1})
         return True
 
     # ---------- پروفایل ----------
@@ -775,12 +892,12 @@ class SelfBot:
 
     async def edit_about(self, about: str) -> bool:
         """تغییر بیو."""
-        await self.call("user.EditAbout", about=about)
+        await self.call("user.EditAbout", about={"value": about})
         return True
 
     async def check_username(self, username: str) -> bool:
         """بررسی آزاد بودن یوزرنیم."""
-        resp = await self.call("user.CheckNickName", nickname=username)
+        resp = await self.call("user.CheckNickName", nick_name=username)
         return bool(resp.get("available"))
 
     # ---------- تاریخچه و گفتگوها ----------
@@ -1012,28 +1129,12 @@ class SelfBot:
 
     # ---------- کیف پول ----------
     async def get_wallet(self) -> dict[str, Any]:
-        return await self.call("wallet.GetWallet")
-
-    async def transfer_money(
-        self, to: str | int | Peer, amount: int, description: str = ""
-    ) -> dict[str, Any]:
-        peer = await self.get_entity(to)
-        return await self.call(
-            "wallet.TransferMoney",
-            to=peer.to_dict(),
-            amount=amount,
-            description=description,
-        )
-
-    # ---------- کیف پول ----------
-    async def get_wallet(self) -> dict[str, Any]:
         """موجودی کیف پول اکانت.
 
-        پروتکل بله کیف پول را در سرویس ABACUS دارد (GetMyKifpools)،
-        نه wallet.GetWallet. این متد نام درست را صدا میزند و نتیجه را
-        ساده میکند تا ``balance`` همیشه سرراست باشد.
+        پروتکل بله کیف پول را در سرویس KIFPOOL دارد (GetMyKifpools)،
+        نه wallet.GetWallet. این متد نام درست رجیستری را صدا میزند.
         """
-        resp = await self.call("abacus.GetMyKifpools")
+        resp = await self.call("kifpool.GetMyKifpools")
         wallet = resp.get("wallet") or {}
         if not isinstance(wallet, dict):
             wallet = {}
@@ -1079,13 +1180,24 @@ class SelfBot:
         if not token:
             raise SelfBotError(f"لینک دعوت معتبر نیست: {link!r}")
         resp = await self.call("groups.GetGroupPreview", token=token)
-        group = resp.get("group") or resp
+
+        # اسکیمای پاسخ بله ثابت نیست: گاهی {"group": {...}}، گاهی
+        # {"fullgroup": {...}} و گاهی فیلدها مستقیماند. هر سه را بگیر.
+        group = resp.get("group") or resp.get("fullgroup") or resp
         if not isinstance(group, dict):
             group = {}
+
+        def first(*keys, default=0):
+            for key in keys:
+                value = group.get(key, resp.get(key))
+                if value not in (None, "", 0):
+                    return value
+            return default
+
         return {
-            "id": int(group.get("id", 0) or 0),
-            "title": str(group.get("title", "") or ""),
-            "is_joined": bool(group.get("isJoined", 0) or resp.get("isJoined", 0)),
+            "id": int(first("id", "group_id", default=0) or 0),
+            "title": str(first("title", "name", default="") or ""),
+            "is_joined": bool(first("isJoined", "is_joined", "joined", default=False)),
             "raw": resp,
         }
 
@@ -1100,8 +1212,8 @@ class SelfBot:
         """ترک گروه با آیدی عددی (همان کاری که main-3.py با id+2^32 میکرد)."""
         await self.call(
             "groups.LeaveGroup",
-            group={"id": int(group_id), "type": 4},
-            random_id=int(time.time()),
+            group={"id": int(group_id), "accessHash": 0},
+            random_id=random.randint(1, 2**62),
         )
         return True
 

@@ -269,14 +269,14 @@ class TestSelfBotHighLevel:
         return bot, calls
 
     def test_get_wallet_uses_abacus(self):
-        bot, calls = self.make({"abacus.GetMyKifpools": {"wallet": {"balance": 5000}}})
+        bot, calls = self.make({"kifpool.GetMyKifpools": {"wallet": {"balance": 5000}}})
         result = run(bot.get_wallet())
         assert result["balance"] == 5000
         assert bot.wallet_balance(result) == 5000
-        assert calls[0][0] == "abacus.GetMyKifpools"
+        assert calls[0][0] == "kifpool.GetMyKifpools"
 
     def test_get_wallet_empty(self):
-        bot, calls = self.make({"abacus.GetMyKifpools": {}})
+        bot, calls = self.make({"kifpool.GetMyKifpools": {}})
         assert run(bot.get_wallet())["balance"] == 0
 
     def test_wallet_balance_requires_arg(self):
