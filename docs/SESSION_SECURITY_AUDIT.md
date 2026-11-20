@@ -28,17 +28,26 @@
 ```
 BKS1\x00<payload>                       → قدیمی، plain (فقط خواندن)
 BKS1\x01<salt16><mac32><body>           → قدیمی، XOR+HMAC (فقط خواندن)
-BKS2\x02<salt16><nonce12><ct+tag>       → جدید، AES-256-GCM
+BKS2\x02<salt16><nonce12><ct+tag>       → قدیمی، AES-256-GCM + 200k (قابل خواندن)
+BKS2\x03<rounds4><salt16><nonce12><ct+tag> → فعلی، AES-256-GCM + 600k
 ```
+
+> **بهروزرسانی 2026-11-20**: فرمت نوشتن به ``BKS3`` ارتقا یافت. جزئیات کامل،
+> benchmark و نتایج تست در `docs/SESSION_STORAGE_HARDENING.md` است.
 
 ### الگوریتم
 
 - **AEAD**: AES-256-GCM از بسته `cryptography` (Apache-2.0 / MIT، سازگار 3.9–3.12)
 - **Nonce**: 12 بایت تصادفی (`os.urandom`) — استاندارد 96 بیتی GCM
 - **Authentication Tag**: 16 بایت، توسط AESGCM به ciphertext اضافه میشود
-- **KDF**: PBKDF2-HMAC-SHA256، 200k iteration، salt 16 بایتی
-- **AAD**: تمام header (`BKS2` + mode + salt + nonce) → دستکاری header باعث شکست auth میشود
-- **نوشتن اتمیک**: `os.replace` از فایل `.tmp`
+- **KDF**: PBKDF2-HMAC-SHA256، **600k iteration** (BKS3)، salt 16 بایتی؛
+  تعداد rounds داخل هدر ذخیره و توسط AAD محافظت میشود (محدوده 100k–5M)
+- **AAD**: تمام header (magic + mode + rounds + salt + nonce) → دستکاری header
+  یا rounds باعث شکست auth میشود
+- **نوشتن اتمیک**: tmp منحصربهفرد + 0600 + flush + fsync + `os.replace` +
+  fsync پوشه (جایی که پشتیبانی شود) + پاکسازی در شکست
+- **همزمانی**: قفل `RLock` per-path (داخل process) — قفل بین processها
+  NOT_IMPLEMENTED و مستند است
 
 ### Migration
 
@@ -47,8 +56,9 @@ BKS2\x02<salt16><nonce12><ct+tag>       → جدید، AES-256-GCM
 - `migrate_to_v2(backup=True)`:
   1. بکاپ امن (`0600` روی یونیکس)
   2. رمزگشایی فایل قدیمی (در صورت شکست، فایل اصلی دست نخورده میماند)
-  3. نوشتن اتمیک با فرمت BKS2
+  3. نوشتن اتمیک با فرمت BKS3 (همچنین BKS2 قدیمی را به BKS3 ارتقا میدهد)
   4. idempotent — دومین بار `False` برمیگرداند
+  5. نام `migrate_to_v2` عمداً حفظ شد (سازگاری با API قبلی)، هرچند هدف ارتقا BKS3 است
 - `rollback_migration()` بکاپ را تأیید و بایت به بایت برمیگرداند
 
 ## 4. تستها

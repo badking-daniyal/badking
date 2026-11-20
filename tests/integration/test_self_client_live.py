@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 
 import pytest
+import pytest_asyncio
 
 pytestmark = pytest.mark.live
 
@@ -42,15 +43,16 @@ def _mask(value: str | None) -> str:
     return value[:2] + "*" * (len(value) - 4) + value[-2:]
 
 
-@pytest.fixture(scope="module")
+@pytest_asyncio.fixture(scope="module")
 async def live_bot():
     """یک SelfBot متصل با حساب آزمایشی — فقط اگر credential مجاز باشد."""
     if not LIVE_PHONE:
         pytest.skip(skip_reason)
     from badking.hybrid import SelfBot
-    from badking.hybrid.session import Session
 
-    bot = SelfBot(phone=LIVE_PHONE, ack_risk=True)
+    # ack_risk پارامتر وجودنداشت و با credential، fixture بجای SKIP دچار
+    # TypeError میشد. SelfBot فقط phone میپذیرد؛ OTP توسط سرور تأیید میشود.
+    bot = SelfBot(phone=LIVE_PHONE)
     try:
         await bot.connect()
     except Exception as exc:  # noqa: BLE001

@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### BKS3 Final Verification & Client API Readiness (2026-11-20)
+- ممیزی مستقل BKS3: تمام موارد امنیتی (AAD، tag، downgrade، DoS، هدر ناقص، migration) با شواهد اجرایی تأیید شد.
+- **Lost update بین دو process اثبات شد** (۶ باقی ماند از ۱۱ انتظار) — قفل between-process صریحاً NOT_IMPLEMENTED و مستند شد.
+- **رفع نقص live harness**: `@pytest_asyncio.fixture` و حذف `ack_risk` نامعتبر — با credential بجای ۵ Error، ۵ SKIP میدهد.
+- بهروزرسانی `docs/SESSION_SECURITY_AUDIT.md` به BKS3/600k؛ سند `docs/BKS3_FINAL_VERIFICATION.md`.
+- ارزیابی Client API: Media Download تنها قابلیت قابل پیادهسازی بدون حدس RPC؛ بقیه BLOCKED تا ترافیک واقعی.
+- نسخه 0.2.2 بدون تغییر، PyPI منتشر نشد.
+
 ### Session Storage Hardening (2026-11-20)
 - **PBKDF2 versioned**: فرمت ``BKS3`` با 600k iteration و تعداد rounds داخل هدر (محافظت شده توسط AAD). فایلهای ``BKS2`` قدیمی (200k) همچنان قابل خواندن و قابل ارتقا با `migrate_to_v2()` — مهاجرت تدریجی و سازگار.
 - **Atomic writes مقاوم**: فایل موقت منحصربهفرد، مجوز 0600، flush + fsync فایل، `os.replace` اتمیک، fsync پوشه (جایی که پشتیبانی شود)، پاکسازی موقت در شکست. فایل اصلی در تمام سناریوهای شکست حفظ میشود.
