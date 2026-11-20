@@ -336,6 +336,36 @@ def cmd_test(args) -> int:
     return run_test(args.extra)
 
 
+def cmd_security(args) -> int:
+    """اسکن امنیتی: badking security scan ."""
+    security_args = getattr(args, "security_cmd", None)
+    if security_args != "scan":
+        print("استفاده: badking security scan [مسیر]")
+        return 1
+
+    import json
+
+    from ..security import SecurityScanner
+
+    scanner = SecurityScanner()
+    report = scanner.scan(args.path)
+
+    if getattr(args, "json", False):
+        print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
+    else:
+        print(report.summary())
+        if report.findings:
+            print()
+            for finding in report.findings:
+                print(f"  {finding}")
+                if finding.hint:
+                    print(f"      → {finding.hint}")
+
+    # وجود یافته CRITICAL یا HIGH => exit 1 (برای CI)
+    blocking = report.critical_count + len(report.by_severity("HIGH"))
+    return 1 if blocking else 0
+
+
 def cmd_migrate(args) -> int:
     """مهاجرت از aiobale."""
     import json
@@ -437,6 +467,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_test = sub.add_parser("test", help="اجرای تست‌ها")
     p_test.add_argument("extra", nargs="*", help="آرگومان‌های اضافه برای pytest")
     p_test.set_defaults(func=cmd_test)
+
+    p_sec = sub.add_parser("security", help="امنیت: اسکن پروژه")
+    p_sec_sub = p_sec.add_subparsers(dest="security_cmd")
+    p_scan = p_sec_sub.add_parser("scan", help="اسکن یافتههای امنیتی")
+    p_scan.add_argument("path", nargs="?", default=".", help="مسیر پروژه")
+    p_scan.add_argument("--json", action="store_true", help="خروجی JSON")
+    p_scan.set_defaults(func=cmd_security)
 
     p_mig = sub.add_parser("migrate", help="مهاجرت پروژه از aiobale")
     p_mig.add_argument("path", nargs="?", default=".", help="فایل یا پوشه")

@@ -86,3 +86,12 @@ class Message(BaleModel):
         هر دو یکیاند. `reply` نام آشناتری است و در نمونهها استفاده شده.
         """
         return await self.answer(text, **kwargs)
+
+    async def delete(self) -> bool:
+        """حذف همین پیام (via Bot ذخیرهشده در context)."""
+        from ._context import current_bot
+
+        bot = current_bot.get()
+        if bot is None:
+            raise RuntimeError("delete() فقط داخل Dispatcher کار میکند")
+        return await bot.delete_message(self.chat.id, self.message_id)

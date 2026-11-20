@@ -195,6 +195,34 @@ class Bot:
             "chat_id": chat_id, "phone_number": phone_number, "first_name": first_name, **kwargs,
         }))
 
+    async def send_sticker(self, chat_id: int | str, sticker: str, **kwargs: Any) -> Message:
+        """ارسال استیکر."""
+        return Message.model_validate(await self.request("sendSticker", {
+            "chat_id": chat_id, "sticker": sticker, **kwargs,
+        }))
+
+    async def send_poll(
+        self,
+        chat_id: int | str,
+        question: str,
+        options: list[str],
+        **kwargs: Any,
+    ) -> Message:
+        """ارسال نظرسنجی.
+
+        Args:
+            question: سوال نظر سنجی.
+            options: گزینهها (حداقل ۲).
+        """
+        if len(options) < 2:
+            raise ValueError("نظرسنجی حداقل به ۲ گزینه نیاز دارد")
+        return Message.model_validate(await self.request("sendPoll", {
+            "chat_id": chat_id,
+            "question": question,
+            "options": options,
+            **kwargs,
+        }))
+
     async def send_chat_action(self, chat_id: int | str, action: str) -> bool:
         return bool(await self.request("sendChatAction", {"chat_id": chat_id, "action": action}))
 

@@ -11,7 +11,7 @@ BADKING — فریمورک همه‌کاره و AI-Native برای بازوها�
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = [
     "__version__",
     "Bot",
@@ -20,6 +20,8 @@ __all__ = [
     "Router",
     "Message",
     "CallbackQuery",
+    "InlineKeyboardMarkup", "InlineKeyboardButton", "ReplyKeyboardMarkup",
+    "KeyboardButton", "ReplyKeyboardRemove", "CopyTextButton",
     "Update",
     "User",
     "Chat",
@@ -34,6 +36,10 @@ from .types.user import User
 from .types.chat import Chat
 from .types.message import Message
 from .types.callback import CallbackQuery
+from .types.keyboard import (
+    InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup,
+    KeyboardButton, ReplyKeyboardRemove, CopyTextButton,
+)
 
 # هسته و خطاها
 from .core.constants import API_BASE, Limits
@@ -194,9 +200,9 @@ from .media import OCR, Voice
 
 # کیفیت و امنیت
 from .observability import Metrics, metrics
-from .security import AntiSpam, AuditLog, Captcha, RBAC, Secrets
+from .security import AntiSpam, AuditLog, Captcha, RBAC, Secrets, SecurityScanner
 from .testing import DryBot, Health
-from .middleware import antispam_mw, logging_mw, metrics_mw
+from .middleware import BaseMiddleware, antispam_mw, logging_mw, metrics_mw
 from .methods import KNOWN_METHODS
 
 __all__ += [
@@ -236,8 +242,8 @@ __all__ += [
     "TimeoutError_", "TlsError", "UnknownMethodError", "UnsupportedMediaError",
     "UploadFailedError", "UserNotFoundError", "ValidationError", "format_exception",
     "Auth", "Connector", "JobQueue", "Scheduler", "EventBus", "Store", "OCR", "Voice",
-    "Metrics", "metrics", "AntiSpam", "AuditLog", "Captcha", "RBAC", "Secrets",
-    "DryBot", "Health", "logging_mw", "metrics_mw", "antispam_mw", "KNOWN_METHODS",
+    "Metrics", "metrics", "AntiSpam", "AuditLog", "Captcha", "RBAC", "Secrets", "SecurityScanner",
+    "DryBot", "Health", "BaseMiddleware", "logging_mw", "metrics_mw", "antispam_mw", "KNOWN_METHODS",
     "SelfBot", "HybridPlugin", "SessionStore", "hybrid_warning",
 ]
 

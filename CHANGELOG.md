@@ -12,6 +12,42 @@
 ### Planned
 - انتشار روی PyPI
 - تست زنده self-bot (نیاز به شماره واقعی)
+- ۳۹ subsection مستندات به صفحات جداگانه
+
+---
+
+## [0.2.1] — 2026-11-20
+
+تکمیل Phase A–E سند مأموریت. ۱۰۰۱ تست، ۱۸۹ export.
+
+### Added
+- **Security Scanner** (`badking.security.SecurityScanner`) — تشخیص توکن،
+  کلید خصوصی، eval/exec، shell=True، SSL disabled، silent exception،
+  assert با severity CRITICAL→INFO. CLI: `badking security scan . --json`
+- **`migration/mappings.json`** — نگاشت واقعی aiobale→BADKING با ۴ وضعیت،
+  تستشده در برابر کد (هیچ هدف خیالی)
+- **`docs/IMPLEMENTATION_STATUS.md`** — وضعیت صادقانه ۳۵ بخش مأموریت
+- **`docs/MASTER_AUDIT_REPORT.md`** — خروجی Phase 1
+- **`docs/COMPETITIVE_ANALYSIS.md`** — مقایسه واقعی، بدون ادعای تأییدنشده
+- **`docs/API_REFERENCE.md`** — مرجع سریع، تستشده در برابر API واقعی
+- **`docs/BENCHMARK.md`** + `benchmarks/bench_core.py` — نتایج واقعی
+- **Bot API:** `send_sticker`, `send_poll`, `ban/unban/restrict_chat_member`,
+  `send_media_group`, `get_chat_member_count`
+- **Message:** `reply`, `delete` aliases
+- **Bot-first API:** `on_message`, `on_callback`, `run`, `dispatcher`
+- **BaseMiddleware** — پل الگوی کلاسمحور به middleware تابعی
+
+### Fixed
+- ۲۰ نمونه از APIای استفاده میکردند که وجود نداشت (`bot.run`, `@bot.on_message`,
+  `message.reply`) — رابط به کتابخانه اضافه شد، نه نمونهها بازنویسی
+- نگاشت `answer_poll → send_poll` به متدی اشاره میکرد که نبود — اضافه شد
+- نگاشت `BaseMiddleware` دروغ میگفت — کلاس پیاده شد
+- چهار نوع کیبورد در سطح بالا export نبودند — اضافه شدند
+
+### Tests
+- ۱۰۰۱ پاس (آفلاین)
+- تستهای جدید: `test_security_scanner`, `test_migration_mapping`,
+  `test_mission_docs`, `test_example_api`, `test_session_control`
 
 ---
 

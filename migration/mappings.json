@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "description": "نگاشت واقعی APIهای aiobale به BADKING. هر وضعیت بر اساس کد واقعی تعیین شده، نه حدس.",
+  "source": "aiobale",
+  "target": "badking",
+  "statuses": {
+    "FULLY_COMPATIBLE": "همان نام و رفتار، بدون تغییر",
+    "COMPATIBLE_WITH_CHANGES": "معادل وجود دارد ولی نام یا شکل فرق میکند",
+    "MANUAL_REVIEW_REQUIRED": "بخشی نیاز به بررسی دستی دارد",
+    "UNSUPPORTED": "معادلی وجود ندارد؛ Migration آن را گزارش میکند و حدس نمیزند"
+  },
+  "imports": [
+    {"source": "aiobale.Client", "target": "badking.Bot", "status": "COMPATIBLE_WITH_CHANGES", "notes": "سازنده متفاوت است: Client(dp, session_file=...) در مقابل Bot(token).", "test": "tests/test_compat.py"},
+    {"source": "aiobale.Bot", "target": "badking.Bot", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "aiobale.BaleClient", "target": "badking.Bot", "status": "COMPATIBLE_WITH_CHANGES", "notes": "نام مستعار قدیمی.", "test": "tests/test_compat.py"},
+    {"source": "aiobale.Dispatcher", "target": "badking.Dispatcher", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "aiobale.Router", "target": "badking.Router", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "aiobale.types.Message", "target": "badking.Message", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "aiobale.types.CallbackQuery", "target": "badking.CallbackQuery", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "aiobale.enums.AuthErrors", "target": "badking.AuthErrors", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_public_api.py"},
+    {"source": "aiobale.enums.ChatType", "target": "badking.ChatType", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_public_api.py"},
+    {"source": "aiobale.fsm.State", "target": "badking.State", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_fsm.py"},
+    {"source": "aiobale.fsm.StatesGroup", "target": "badking.StatesGroup", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_fsm.py"},
+    {"source": "aiobale.fsm.FSMContext", "target": "badking.FSMContext", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_fsm.py"},
+    {"source": "aiobale.storage.MemoryStorage", "target": "badking.MemoryStorage", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_storage_backends.py"},
+    {"source": "aiobale.storage.SQLiteStorage", "target": "badking.SQLiteStorage", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_storage_backends.py"},
+    {"source": "aiobale.filters.F", "target": "badking.F", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_filters.py"},
+    {"source": "aiobale.middleware.BaseMiddleware", "target": "badking.BaseMiddleware", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_middleware.py"},
+    {"source": "aiobale.keyboards.InlineKeyboardMarkup", "target": "badking.InlineKeyboardMarkup", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_keyboards.py"},
+    {"source": "aiobale.keyboards.InlineKeyboardButton", "target": "badking.InlineKeyboardButton", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_keyboards.py"},
+    {"source": "aiobale.keyboards.ReplyKeyboardMarkup", "target": "badking.ReplyKeyboardMarkup", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_keyboards.py"},
+    {"source": "aiobale.keyboards.KeyboardButton", "target": "badking.KeyboardButton", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_keyboards.py"}
+  ],
+  "methods": [
+    {"source": "message.answer", "target": "message.reply", "status": "COMPATIBLE_WITH_CHANGES", "notes": "reply نام مستعار answer در BADKING است.", "test": "tests/test_example_api.py"},
+    {"source": "message.answer_photo", "target": "bot.send_photo", "status": "COMPATIBLE_WITH_CHANGES", "notes": "ارسال از طریق bot، پاسخ از طریق reply_to_message_id.", "test": "tests/test_compat.py"},
+    {"source": "message.answer_video", "target": "bot.send_video", "status": "COMPATIBLE_WITH_CHANGES", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "message.answer_audio", "target": "bot.send_audio", "status": "COMPATIBLE_WITH_CHANGES", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "message.answer_document", "target": "bot.send_document", "status": "COMPATIBLE_WITH_CHANGES", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "message.answer_location", "target": "bot.send_location", "status": "COMPATIBLE_WITH_CHANGES", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "message.answer_contact", "target": "bot.send_contact", "status": "COMPATIBLE_WITH_CHANGES", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "message.answer_poll", "target": "bot.send_poll", "status": "COMPATIBLE_WITH_CHANGES", "notes": "send_poll در BADKING 0.2.0 اضافه شد.", "test": "tests/test_compat.py"},
+    {"source": "message.delete", "target": "message.delete", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_compat.py"},
+    {"source": "message.edit_message_reply_markup", "target": "bot.edit_message_reply_markup", "status": "MANUAL_REVIEW_REQUIRED", "notes": "امضای متد ممکن است متفاوت باشد؛ بررسی دستی لازم است.", "test": "tests/test_compat.py"}
+  ],
+  "self_bot": [
+    {"source": "aiobale.Client(dp, session_file=...)", "target": "badking.hybrid.SelfBot(session=...)", "status": "COMPATIBLE_WITH_CHANGES", "notes": "جلسهها رمزنگاریشدهاند و SessionManager آنها را مرکزی مدیریت میکند.", "test": "tests/test_session_control.py"},
+    {"source": "client.start_phone_auth", "target": "SessionManager.request_code", "status": "COMPATIBLE_WITH_CHANGES", "notes": "جریان ورود توسط SessionManager هدایت میشود.", "test": "tests/test_session_control.py"},
+    {"source": "client.validate_code", "target": "SessionManager.submit_code", "status": "COMPATIBLE_WITH_CHANGES", "notes": "", "test": "tests/test_session_control.py"},
+    {"source": "client.get_full_me", "target": "SelfBot.get_full_me", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_session_control.py"},
+    {"source": "client.get_wallet", "target": "SelfBot.get_wallet", "status": "FULLY_COMPATIBLE", "notes": "BADKING از سرویس درست abacus.GetMyKifpools استفاده میکند.", "test": "tests/test_session_control.py"},
+    {"source": "client.get_group_preview", "target": "SelfBot.get_group_preview", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_session_control.py"},
+    {"source": "client.join_chat", "target": "SelfBot.join_by_link", "status": "COMPATIBLE_WITH_CHANGES", "notes": "توکن دعوت از لینک استخراج میشود.", "test": "tests/test_session_control.py"},
+    {"source": "client.leave_group", "target": "SelfBot.leave_by_id / leave_group", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_session_control.py"},
+    {"source": "client.report_chat", "target": "SelfBot.report_chat", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_session_control.py"},
+    {"source": "client.MessageSetReaction", "target": "SelfBot.set_reaction", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_session_control.py"},
+    {"source": "client.UpvotePost", "target": "SelfBot.upvote", "status": "FULLY_COMPATIBLE", "notes": "", "test": "tests/test_session_control.py"}
+  ],
+  "unsupported": [
+    {"source": "client.register_next_step_handler", "target": null, "status": "UNSUPPORTED", "notes": "در BADKING از FSM استفاده کن.", "test": "tests/test_compat.py"},
+    {"source": "client.add_handler", "target": null, "status": "UNSUPPORTED", "notes": "در BADKING با دکوراتور @router.message ثبت کن.", "test": "tests/test_compat.py"},
+    {"source": "client.get_updates_long_polling", "target": null, "status": "UNSUPPORTED", "notes": "در BADKING با bot.run() جایگزین میشود.", "test": "tests/test_compat.py"}
+  ]
+}
