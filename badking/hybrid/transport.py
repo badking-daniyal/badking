@@ -152,10 +152,18 @@ class Transport:
         self.max_reconnect = max_reconnect
         self.ping_interval = ping_interval
         self._frame, self._unframe = FRAMINGS[framing]
-        # req_id به طور پیشفرض روی wire نوشته نمیشود: فیلد ۱ در اکثر RPCها
-        # داده واقعی است (peer/seq/data). تا زمانی که پروتکل سرور با شواهد
-        # واقعی تأیید شود، correlation داخلی (FIFO) ایمنتر است.
+        # req_id پیشفرض روی wire نوشته نمیشود: فیلد ۱ در اکثر RPCها داده واقعی
+        # است (peer/seq/data) و نباید حدس زده شود.
+        #
+        # correlation: بدون req_id تأییدشده از سرور، هیچ روشی برای تشخیص
+        # پاسخ دیرهنگام/تکراری یا آپدیت ناخواسته وجود ندارد. FIFO میتواند
+        # پاسخ اشتباهی را به درخواست دیگری بدهد (مثلاً بعد از timeout).
+        # بنابراین پیشفرض ``strict`` است: پاسخی که req_id قابل تشخیص ندارد،
+        # به عنوان update تحویل داده میشود و درخواست در انتظار timeout میماند
+        # (امن: انتساب اشتباه رخ نمیدهد). حالت ``fifo`` صریحاً ناامن است و
+        # فقط در صورتی قابل استفاده است که ترتیب پاسخها توسط سرور تضمین شود.
         self.stamp_req_id = stamp_req_id
+        self.correlation = "fifo" if stamp_req_id else "strict"
         self._fifo: list[str] = []
         self._ws: Any = None
         self._buf = b""
@@ -246,13 +254,20 @@ class Transport:
             if not fut.done():
                 fut.set_result(frame)
             return
-        if not getattr(self, "stamp_req_id", False) and getattr(self, "_fifo", None):
-            # پاسخ به ترتیب ورود، به قدیمیترین درخواست در صف تعلق میگیرد.
+        if getattr(self, "correlation", "strict") == "fifo" and getattr(self, "_fifo", None):
+            # حالت صریحاً ناامن: فقط زمانی استفاده میشود که کاربر تضمین
+            # ترتیب پاسخها را توسط سرور تأیید کرده باشد.
+            logger.warning(
+                "FIFO correlation: پاسخ بدون req_id به قدیمیترین درخواست "
+                "تخصیص داده شد (انتساب اشتباه در صورت خروج از ترتیب ممکن است)"
+            )
             req_id = self._fifo.pop(0)
             fut = self._pending.pop(req_id, None)
             if fut is not None and not fut.done():
                 fut.set_result(frame)
                 return
+        # حالت strict: پاسخ فاقد req_id قابل انتساب مطمئن نیست → بعنوان
+        # update تحویل میشود؛ درخواست در انتظار، timeout میخورد (امن).
         if self.on_update is not None:
             try:
                 await self.on_update(frame)
@@ -308,9 +323,11 @@ class Transport:
         if self.stamp_req_id:
             body = _stamp_req_id(payload, req_id)
         else:
-            # correlation داخلی: ترتیب پاسخها همان ترتیب درخواستها فرض میشود
-            # (WebSocket تککاناله). payload روی wire دست نخورده میماند.
-            self._fifo.append(req_id)
+            # payload روی wire دست نخورده میماند. در حالت strict (پیشفرض)
+            # هیچ ورودی به صف FIFO اضافه نمیشود: چون سرور correlation واقعی
+            # را تأیید نکرده، انتساب پاسخ بر اساس ترتیب میتواند اشتباه باشد.
+            if self.correlation == "fifo":
+                self._fifo.append(req_id)
             body = payload
         try:
             async with self._lock:

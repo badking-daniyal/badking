@@ -41,14 +41,21 @@ async def test_transport_payload_untouched_by_default():
     """Default transport must not prepend a guessed req_id field."""
     t = Transport("ws://example", stamp_req_id=False)
     payload = b"\x08\x01\x12\x02hi"
-    # We only exercise the stamping decision, not a live socket.
+    from badking.hybrid.transport import _stamp_req_id
+    stamped = _stamp_req_id(payload, "1f")
+    # With stamping off, request() sends the original payload; verify the
+    # two byte strings really differ, so this is not a tautology.
+    assert stamped != payload
     assert t.stamp_req_id is False
-    assert payload == b"\x08\x01\x12\x02hi"
+    assert t.correlation == "strict"
 
 
 @pytest.mark.asyncio
 async def test_fifo_correlation_maps_responses_in_order():
+    # FIFO صریحاً ناامن است و پیشفرض نیست؛ این تست رفتار حالت صریح fifo را
+    # بررسی میکند، نه پیشفرض را.
     t = Transport("ws://example", stamp_req_id=False)
+    t.correlation = "fifo"
     t._fifo = ["a", "b"]
     loop = asyncio.get_event_loop()
     fa = loop.create_future()

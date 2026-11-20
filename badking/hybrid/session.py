@@ -83,12 +83,16 @@ def _load_aesgcm():
 
 @dataclass
 class Session:
-    """یک اکانت self-bot."""
+    """یک اکانت self-bot.
 
-    access_token: str = ""
-    refresh_token: str = ""
+    فیلدهای حساس (access_token / refresh_token / phone) با ``repr=False``
+    تعریف شدهاند تا در لاگها، tracebackها و خروجی debugger نشت نکنند.
+    """
+
+    access_token: str = field(default="", repr=False)
+    refresh_token: str = field(default="", repr=False)
     user_id: int | None = None
-    phone: str = ""
+    phone: str = field(default="", repr=False)
     name: str = ""
     username: str = ""
     device_model: str = "BADKING"
@@ -133,8 +137,14 @@ class Session:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Session":
+        if not isinstance(data, dict):
+            raise SessionError("ورودی session نامعتبر است")
         known = {f for f in cls.__dataclass_fields__}
-        return cls(**{k: v for k, v in data.items() if k in known})
+        try:
+            return cls(**{k: v for k, v in data.items() if k in known})
+        except (TypeError, ValueError) as exc:
+            # بدون افشای محتوا — فقط نوع خطا مشخص میشود.
+            raise SessionError("ساختار session نامعتبر است") from None
 
 
 class SessionStore:
@@ -182,12 +192,24 @@ class SessionStore:
         ciphertext = AESGCM(key).encrypt(nonce, plaintext, header)
         return header + ciphertext  # tag توسط AESGCM به انتها اضافه میشود
 
-    def _decrypt(self, blob: bytes) -> bytes:
-        """رمزگشایی امن با پشتیبانی از فرمتهای قدیمی."""
+    def _decrypt(self, blob: bytes, *, allow_plain: bool = False) -> bytes:
+        """رمزگشایی امن با پشتیبانی از فرمتهای قدیمی.
+
+        Args:
+            allow_plain: خواندن فرمت رمزنگارینشده BKS1-plain. فقط زمانی که
+                رمز تنظیم شده، مهاجم با دسترسی نوشتن میتوانست فایل رمزدار
+                را با یک فایل plain جعلی جایگزین کند و بدون رمز، توکن دلخواه
+                تزریق نماید. به همین دلیل خواندن plain وقتی password وجود
+                دارد، تنها با اجازه صریح (مثلاً در migration) مجاز است.
+        """
         version = self.format_version(blob)
 
         if version == "BKS1-plain":
-            # فرمت قدیمی بدون رمز — همانطور که هست برگردانده میشود.
+            if self.password and not allow_plain:
+                raise SessionError(
+                    "فایل session رمزنگاری نشده است در حالی که رمز تنظیم شده؛ "
+                    "برای تبدیل آن migrate_to_v2() را صدا بزن"
+                )
             return blob[5:]
 
         if version == "BKS1-encrypted":
@@ -228,12 +250,15 @@ class SessionStore:
 
     # ---------- I/O ----------
 
-    def load_all(self) -> dict[str, Session]:
+    def load_all(self, *, allow_plain: bool = False) -> dict[str, Session]:
         if not self.path.exists():
             return {}
-        blob = self.path.read_bytes()
         try:
-            data = json.loads(self._decrypt(blob).decode("utf-8"))
+            blob = self.path.read_bytes()
+        except OSError:
+            raise SessionError("فایل session قابل خواندن نیست") from None
+        try:
+            data = json.loads(self._decrypt(blob, allow_plain=allow_plain).decode("utf-8"))
         except SessionError:
             raise
         except Exception:
@@ -253,8 +278,20 @@ class SessionStore:
             ensure_ascii=False,
         ).encode("utf-8")
         tmp = self.path.with_suffix(self.path.suffix + ".tmp")
-        tmp.write_bytes(self._encrypt(payload))
+        data = self._encrypt(payload)
+        # مجوز محدود از همان لحظه ایجاد فایل موقت (0600 روی یونیکس).
+        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
         os.replace(tmp, self.path)  # اتمیک
+        try:
+            os.chmod(self.path, 0o600)
+        except OSError:  # Windows — مجوز یونیکس قابل اعمال نیست
+            pass
         self._cache = dict(sessions)
 
     # ---------- Migration ----------
@@ -320,8 +357,11 @@ class SessionStore:
         if backup:
             self.backup()
 
-        # ۱) رمزگشایی فایل قدیمی (در صورت شکست، اصلی دست نخورده میماند)
-        sessions = self.load_all()
+        # ۱) رمزگشایی فایل قدیمی (در صورت شکست، اصلی دست نخورده میماند).
+        #    اجازه صریح plain فقط در مسیر migration داده میشود تا فایل
+        #    قدیمی قابل تبدیل بماند، بدون اینکه خواندن عادی فایل plain جعلی
+        #    را ممکن کند.
+        sessions = self.load_all(allow_plain=True)
         # ۲) نوشتن اتمیک با فرمت جدید
         self.save_all(sessions)
         self._cache = dict(sessions)
@@ -338,12 +378,22 @@ class SessionStore:
         )
         if not backup_path.exists():
             return False
-        # تأیید بکاپ قبل از جایگزینی — از پذیرش فایل خراب جلوگیری میکند.
         data = backup_path.read_bytes()
-        self.format_version(data)  # در صورت نامعتبر بودن SessionError میدهد
+
+        # تأیید کامل بکاپ قبل از جایگزینی. چک کردن تنها ۶ بایت magic کافی
+        # نیست: یک بکاپ با header سالم و بدنه خراب، فایل زنده سالم را با
+        # داده غیرقابلخواندن جایگزین میکرد. اینجا بکاپ واقعاً رمزگشایی
+        # میشود تا HMAC / GCM tag / JSON هم تأیید شوند.
+        probe = SessionStore(backup_path, password=self.password)
+        probe.load_all(allow_plain=True)  # در صورت خرابی SessionError — فایل زنده دست نخورده میماند
+
         tmp = self.path.with_suffix(self.path.suffix + ".rollback")
-        tmp.write_bytes(data)
-        os.replace(tmp, self.path)
+        try:
+            tmp.write_bytes(data)
+            os.replace(tmp, self.path)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
         self._cache = {}
         return True
 

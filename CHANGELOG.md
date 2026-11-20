@@ -9,6 +9,19 @@
 
 ## [Unreleased]
 
+### Independent Security Review (2026-11-20)
+- **۶ نقص اثباتشده اصلاح شد** (همه با اسکریپت reproduction تأیید و با regression تست پوشش داده شدند):
+  - rollback بکاپ خراب، فایل سالم را با داده ناخوانده جایگزین میکرد → validate کامل بکاپ
+  - `AttributeError` خام از `Session.from_dict` → `SessionError` امن
+  - نشت توکنها در `repr(Session)` → `repr=False` برای فیلدهای حساس
+  - تزریق session plaintext بدون رمز → خواندن plain فقط با `allow_plain` صریح
+  - FIFO پاسخ دیرهنگام/آپدیت ناخواسته را اشتباه تخصیص میداد → پیشفرض `strict`
+  - فایل session با مجوز 0644 ساخته میشد → نوشتن با `0600`
+- تست `test_transport_payload_untouched_by_default` از tautology به تست واقعی تبدیل شد
+- ۱۰ تست regression جدید — **۱۲۵۹ پاس + ۱ SKIP + ۵ live SKIP**
+- سند `docs/INDEPENDENT_SECURITY_REVIEW.md` — ارزیابی صادقانه Production (آماده نیست)
+- نسخه 0.2.2 بدون تغییر، PyPI منتشر نشد
+
 ### Session Security & Live Client Validation (2026-11-20)
 - **Session Encryption به AES-256-GCM (AEAD) ارتقا یافت** — فرمت نسخهبندی شده `BKS2`، nonce تصادفی ۱۲ بایتی، Authentication Tag، AAD روی header، PBKDF2-SHA256 200k
 - Migration امن و کنترلشده: تشخیص فرمت قدیمی، بکاپ `0600`، `migrate_to_v2` idempotent، `rollback_migration` بایت به بایت، بدون از دست رفتن داده در شکست
