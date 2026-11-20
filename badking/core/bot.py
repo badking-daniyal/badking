@@ -60,6 +60,7 @@ class Bot:
         self._client = client
         self._offset = 0
         self._me: User | None = None
+        self._dispatcher: Any = None  # برای رابط ساده on_message/run
 
     @property
     def api_url(self) -> str:
@@ -240,6 +241,69 @@ class Bot:
     async def get_chat_members_count(self, chat_id: int | str) -> int:
         return int(await self.request("getChatMembersCount", {"chat_id": chat_id}))
 
+    async def get_chat_member_count(self, chat_id: int | str) -> int:
+        """نام مستعار ``get_chat_members_count`` (بدون «s»)."""
+        return await self.get_chat_members_count(chat_id)
+
+    async def ban_chat_member(
+        self, chat_id: int | str, user_id: int, until_date: int | None = None
+    ) -> bool:
+        """اخراج کاربر از گروه.
+
+        Args:
+            until_date: زمان آزادسازی (timestamp). اگر ``None`` باشد دائمی.
+        """
+        payload: dict[str, Any] = {"chat_id": chat_id, "user_id": user_id}
+        if until_date is not None:
+            payload["until_date"] = until_date
+        return bool(await self.request("banChatMember", payload))
+
+    async def unban_chat_member(self, chat_id: int | str, user_id: int) -> bool:
+        """رفع اخراج کاربر."""
+        return bool(await self.request("unbanChatMember", {
+            "chat_id": chat_id, "user_id": user_id,
+        }))
+
+    async def restrict_chat_member(
+        self,
+        chat_id: int | str,
+        user_id: int,
+        permissions: dict[str, Any] | None = None,
+        until_date: int | None = None,
+    ) -> bool:
+        """محدود کردن کاربر (سکوت).
+
+        Args:
+            permissions: دسترسیهای مجاز. پیشفرض همه ممنوع.
+            until_date: پایان محدودیت (timestamp).
+        """
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "user_id": user_id,
+            "permissions": permissions or {
+                "can_send_messages": False,
+                "can_send_media_messages": False,
+                "can_send_other_messages": False,
+                "can_add_web_page_previews": False,
+            },
+        }
+        if until_date is not None:
+            payload["until_date"] = until_date
+        return bool(await self.request("restrictChatMember", payload))
+
+    async def send_media_group(
+        self, chat_id: int | str, media: list[dict[str, Any]], **kwargs: Any
+    ) -> list[Message]:
+        """ارسال گروه رسانه (آلبوم).
+
+        Args:
+            media: لیست آیتمها، هر کدام شامل ``type`` و ``media``.
+        """
+        payload: dict[str, Any] = {"chat_id": chat_id, "media": _clean(media)}
+        payload.update(kwargs)
+        raw = await self.request("sendMediaGroup", payload)
+        return [Message.model_validate(item) for item in (raw or [])]
+
     async def set_webhook(self, url: str, **kwargs: Any) -> bool:
         return bool(await self.request("setWebhook", {"url": url, **kwargs}))
 
@@ -338,3 +402,40 @@ class Bot:
         except asyncio.CancelledError:
             await self.close()
             raise
+
+    # ---------- رابط ساده (Bot-first) ----------
+
+    @property
+    def dispatcher(self) -> Any:
+        """Dispatcher داخلی. هر بار همان را برمیگرداند."""
+        if self._dispatcher is None:
+            from .dispatcher import Dispatcher
+
+            self._dispatcher = Dispatcher()
+        return self._dispatcher
+
+    def on_message(self, *filters: Any, priority: int = 0) -> Any:
+        """ثبت هندلر پیام، بدون نیاز به Dispatcher جدا.
+
+            @bot.on_message(F.text == "/start")
+            async def start(message):
+                await message.reply("سلام")
+
+        معادل دقیق ``@dp.message(...)`` است، فقط کوتاهتر.
+        """
+        return self.dispatcher.message(*filters, priority=priority)
+
+    def on_callback_query(self, *filters: Any, priority: int = 0) -> Any:
+        """ثبت هندلر کال بک، بدون Dispatcher جدا."""
+        return self.dispatcher.callback_query(*filters, priority=priority)
+
+    def on_callback(self, *filters: Any, priority: int = 0) -> Any:
+        """نام مستعار ``on_callback_query`` — کوتاهتر."""
+        return self.dispatcher.callback_query(*filters, priority=priority)
+
+    async def run(self, *, limit: int = 100, timeout: int = 10) -> None:
+        """روشن کردن ربات با هندلرهای ثبتشده توسط ``on_message``.
+
+        معادل ``await bot.polling(bot.dispatcher)`` است.
+        """
+        await self.polling(self.dispatcher, limit=limit, timeout=timeout)

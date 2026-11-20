@@ -79,3 +79,10 @@ class Message(BaleModel):
         if bot is None:
             raise RuntimeError("answer() فقط داخل Dispatcher کار میکند")
         return await bot.send_message(self.chat.id, text, reply_to_message_id=self.message_id, **kwargs)
+
+    async def reply(self, text: str, **kwargs: Any) -> "Message":
+        """نام مستعار `answer` — پاسخ به همین پیام.
+
+        هر دو یکیاند. `reply` نام آشناتری است و در نمونهها استفاده شده.
+        """
+        return await self.answer(text, **kwargs)

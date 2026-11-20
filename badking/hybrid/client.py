@@ -35,6 +35,7 @@ from .rpc import (
 )
 from .session import Session, SessionStore
 from .transport import NotConnected, RpcFailed, RpcTimeout, Transport
+from ..utils import extract_join_token
 
 logger = logging.getLogger("badking.hybrid.client")
 
@@ -150,12 +151,14 @@ class SelfBot:
         auto_reconnect: bool = True,
         timeout: float = 30.0,
         framing: str = "length",
+        transport_factory: Callable[[], Transport] | None = None,
     ):
         self.ws_url = ws_url
         self.registry = registry or default_registry
         self.auto_reconnect = auto_reconnect
         self.timeout = timeout
         self.framing = framing
+        self.transport_factory = transport_factory
         self._phone = phone
         self._store: SessionStore | None = None
         self._session: Session | None = None
@@ -187,13 +190,16 @@ class SelfBot:
             await self._do_login()
 
         assert self._session is not None
-        self._transport = Transport(
-            self.ws_url,
-            headers=self._auth_headers(self._session),
-            framing=self.framing,
-            timeout=self.timeout,
-            max_reconnect=5 if self.auto_reconnect else 0,
+        make_transport = self.transport_factory or (
+            lambda: Transport(
+                self.ws_url,
+                headers=self._auth_headers(self._session),
+                framing=self.framing,
+                timeout=self.timeout,
+                max_reconnect=5 if self.auto_reconnect else 0,
+            )
         )
+        self._transport = make_transport()
         self._transport.on_update = self._on_raw_update
         await self._transport.connect()
         return self
@@ -1018,6 +1024,125 @@ class SelfBot:
             amount=amount,
             description=description,
         )
+
+    # ---------- کیف پول ----------
+    async def get_wallet(self) -> dict[str, Any]:
+        """موجودی کیف پول اکانت.
+
+        پروتکل بله کیف پول را در سرویس ABACUS دارد (GetMyKifpools)،
+        نه wallet.GetWallet. این متد نام درست را صدا میزند و نتیجه را
+        ساده میکند تا ``balance`` همیشه سرراست باشد.
+        """
+        resp = await self.call("abacus.GetMyKifpools")
+        wallet = resp.get("wallet") or {}
+        if not isinstance(wallet, dict):
+            wallet = {}
+        return {
+            "balance": int(wallet.get("balance", 0) or 0),
+            "is_merchant": bool(wallet.get("isMerchant", 0)),
+            "level": wallet.get("level", 0),
+            "raw": resp,
+        }
+
+    def wallet_balance(self, resp: dict[str, Any] | None = None) -> int:
+        """گرفتن موجودی از نتیجه get_wallet (یا صدا زدن دوباره).
+
+        این همان کاری است که main-3.py با ``wallet.wallet.balance // 10``
+        میکرد، ولی بدون وابستگی به ساختار شیء.
+        """
+        if resp is None:
+            raise ValueError("نتیجه get_wallet را بده")
+        return int(resp.get("balance", 0) or 0)
+
+    async def get_full_me(self) -> dict[str, Any]:
+        """اطلاعات کامل اکانت: آیدی، نام، شماره، یوزرنیم.
+
+        جایگزین ``client.get_full_me()`` در aiobale.
+        """
+        me = await self.get_me()
+        phone = self._session.phone if self._session else ""
+        return {
+            "id": me.id,
+            "name": me.title,
+            "username": me.username,
+            "phone": phone,
+            "peer": me.to_dict(),
+        }
+
+    async def get_group_preview(self, link: str) -> dict[str, Any]:
+        """پیشنمایش گروه از روی لینک دعوت.
+
+        جایگزین ``client.get_group_preview()`` در aiobale.
+        ``is_joined`` و ``id`` و ``title`` را برمیگرداند.
+        """
+        token = extract_join_token(link)
+        if not token:
+            raise SelfBotError(f"لینک دعوت معتبر نیست: {link!r}")
+        resp = await self.call("groups.GetGroupPreview", token=token)
+        group = resp.get("group") or resp
+        if not isinstance(group, dict):
+            group = {}
+        return {
+            "id": int(group.get("id", 0) or 0),
+            "title": str(group.get("title", "") or ""),
+            "is_joined": bool(group.get("isJoined", 0) or resp.get("isJoined", 0)),
+            "raw": resp,
+        }
+
+    async def join_by_link(self, link: str) -> dict[str, Any]:
+        """ورود به گروه با لینک (همراه استخراج توکن)."""
+        token = extract_join_token(link)
+        if not token:
+            raise SelfBotError(f"لینک دعوت معتبر نیست: {link!r}")
+        return await self.call("groups.JoinGroup", token=token)
+
+    async def leave_by_id(self, group_id: int) -> bool:
+        """ترک گروه با آیدی عددی (همان کاری که main-3.py با id+2^32 میکرد)."""
+        await self.call(
+            "groups.LeaveGroup",
+            group={"id": int(group_id), "type": 4},
+            random_id=int(time.time()),
+        )
+        return True
+
+    async def report_chat(
+        self,
+        chat_id: int,
+        chat_type: int = 3,
+        reason: str = "محتوای نامناسب",
+    ) -> bool:
+        """گزارش یک چت.
+
+        Args:
+            chat_id: آیدی عددی چت.
+            chat_type: ۱=خصوصی، ۲=کانال، ۳=گروه.
+            reason: متن دلیل گزارش.
+        """
+        await self.call(
+            "report.ReportInappropriateContent",
+            report_body={
+                "peer": {"id": int(chat_id), "type": int(chat_type)},
+                "messages": [],
+                "kind": str(reason),
+            },
+        )
+        return True
+
+    async def set_reaction(
+        self, ref: str | int | Peer, message_id: int, emoji: str
+    ) -> bool:
+        """گذاشتن واکنش (نام مستعار واضحتر react)."""
+        return await self.react(ref, message_id, emoji)
+
+    async def upvote(self, ref: str | int | Peer, message_id: int) -> bool:
+        """لایک پست مجله."""
+        peer = await self.get_entity(ref)
+        await self.call(
+            "magazine.UpvotePost",
+            message={"peer": peer.to_dict(), "messageId": int(message_id)},
+            album_id={"value": 0},
+        )
+        return True
 
     # ---------- آمار ----------
     def stats(self) -> dict[str, Any]:

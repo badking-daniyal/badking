@@ -53,6 +53,13 @@ from .rpc import (
     registry,
 )
 from .session import Session, SessionError, SessionStore
+from .sessions import (
+    AccountInfo,
+    CheckReport,
+    CreateResult,
+    SessionManager,
+    SessionManagerError,
+)
 from .transport import (
     NotConnected,
     RpcFailed,
@@ -183,6 +190,11 @@ __all__ = [
     "Session",
     "SessionError",
     "SessionStore",
+    "SessionManager",
+    "SessionManagerError",
+    "AccountInfo",
+    "CheckReport",
+    "CreateResult",
     "SignInResult",
     "Transport",
     "TransportError",

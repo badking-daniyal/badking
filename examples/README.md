@@ -49,6 +49,7 @@ python examples/01_hello.py
 | ۲۵ | `25_media.py` | دانلود، آپلود، کش، اعتبارسنجی فایل |
 | ۲۶ | `26_redis.py` | چند سرور، وضعیت مشترک روی Redis |
 | ۲۷ | `27_plugins.py` | افزونه سفارشی، دو زبان |
+| ۲۸ | `28_session_control.py` | کنترل سشن self-bot (معادل main-3.py) |
 
 ## Self-bot / Internal API
 

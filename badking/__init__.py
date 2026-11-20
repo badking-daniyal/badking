@@ -103,6 +103,15 @@ from .utils import (
 )
 from .utils.callback_data import CallbackData, CallbackFilter
 
+# کنترل سشن self-bot
+from .hybrid import (
+    AccountInfo,
+    CheckReport,
+    CreateResult,
+    SessionManager,
+    SessionManagerError,
+)
+
 # مهاجرت از aiobale
 from .compat import MigrationReport, analyze, migrate_file, migrate_source, migration_summary
 
@@ -216,6 +225,7 @@ __all__ += [
     "MediaEngine", "MediaInfo", "safe_filename", "validate_extension",
     "RedisStorage", "PostgreSQLStorage",
     "MigrationReport", "analyze", "migrate_file", "migrate_source", "migration_summary",
+    "SessionManager", "SessionManagerError", "AccountInfo", "CheckReport", "CreateResult",
     "BADKINGError", "AuthenticationError", "ChatNotFoundError", "ChatWriteForbiddenError",
     "CircuitOpenError", "CodeInvalidError", "ConfigError", "ConnectionLostError",
     "DecodeError", "DnsError", "DownloadFailedError", "EncodeError", "FileTooLargeError",
