@@ -13,8 +13,8 @@
 
 | شاخص | مقدار واقعی |
 |---|---|
-| تستها | ۱۰۰۱ پاس (آفلاین) |
-| Exportها | ۱۸۹ |
+| تستها | ۱۰۴۱ پاس (آفلاین) |
+| Exportها | ۱۹۰ |
 | پکیجها | ۳۴ |
 | نمونهها | ۲۸ |
 | RPCها | ۷۹ متد + ۶۵ اسکیمای پاسخ |
@@ -33,7 +33,7 @@
 | 3 | بررسی رقابتی aiobale | IMPLEMENTED | `docs/COMPETITIVE_ANALYSIS.md` با جدول واقعی و بدون ادعای تأییدنشده |
 | 4 | معماری اصلی | IMPLEMENTED | Modular, async-first, ۳۴ پکیج، مرز شفاف Bot/Self |
 | 5 | Bot API | IMPLEMENTED | متدهای پیام/چت/کال بک/فایل + media group + ban/restrict |
-| 6 | Self Client | IMPLEMENTED | ۷۹ RPC، session رمزنگاریشده، reconnect، OTP، ریاکشن |
+| 6 | Self Client | PARTIALLY_IMPLEMENTED | ۷۹ RPC، session، OTP ✅؛ صحت پروتکل BLOCKED — docs/SELF_CLIENT_AUDIT.md |
 | 7 | Event & Dispatcher | IMPLEMENTED | Router تو در تو، first، error isolation، DI |
 | 8 | Magic Filters | IMPLEMENTED | `F.text/photo/...`، `&`/`\|`/`~`، فیلتر سفارشی و async |
 | 9 | FSM | IMPLEMENTED | State/Group/Context، TTL، locking، recovery، ۴ storage |
@@ -41,7 +41,7 @@
 | 11 | Middleware | IMPLEMENTED | auth/log/rate/antispam/i18n/error + سفارشی |
 | 12 | Keyboard & Callback | IMPLEMENTED | Builder، pagination، CallbackData factory، اعتبارسنجی |
 | 13 | Conversation | IMPLEMENTED | ویزارد چندمرحلهای، timeout، isolation |
-| 14 | Media Engine | PARTIALLY_IMPLEMENTED | آپلود/دانلود/کش/اعتبارسنجی/پیشرفت ✅؛ **resume** ❌ |
+| 14 | Media Engine | PARTIALLY_IMPLEMENTED | Bot layer کامل ✅؛ self-bot download و resume ❌ |
 | 15 | Security Center | IMPLEMENTED | secrets/audit/antispam + CLI `badking security scan` با severity و تست |
 | 16 | Developer Experience | IMPLEMENTED | Bot-first API (`bot.run`, `@bot.on_message`, `message.reply`) |
 | 17 | CLI | IMPLEMENTED | ۱۶ دستور شامل `security scan`، `migrate`، `doctor` |

@@ -16,6 +16,29 @@
 
 ---
 
+## [0.2.2] — 2026-11-20
+
+سه اولویت مأموریت: Self Client audit، Migration validation، ۳۹ صفحه مستندات.
+
+### Added
+- docs/SELF_CLIENT_AUDIT.md — ممیزی مستقل ۳گانه با یافتههای VERIFIED/BLOCKED
+- docs/MIGRATION_VALIDATION.md — اعتبارسنجی ۴/۴ فایل پروژه واقعی aiobale
+- docs/REMAINING_GAPS.md — کمبودهای صادقانه
+- docs/guide/ — ۳۹ صفحه مستقل + نمایه، تستشده در برابر API واقعی
+- BaleMethod — لایه سازگاری متد سفارشی aiobale
+- ۴۰ regression test جدید (self client audit, bale method, guide docs, reports)
+
+### Fixed (یافتههای ممیزی Self Client)
+- _my_id قبل از session محاسبه میشد (get_me/is_out خراب)
+- سرویس اشتباه wallet، متد مرده edit_profile، کلیدهای ناسازگار گروه/کاربر
+- crash با date bytes، آپلود silent failure، probe فریبنده
+- websockets محدود به <14.0
+
+### Tests
+- ۱۰۴۸ پاس (آفلاین)
+
+---
+
 ## [0.2.1] — 2026-11-20
 
 تکمیل Phase A–E سند مأموریت. ۱۰۰۱ تست، ۱۸۹ export.

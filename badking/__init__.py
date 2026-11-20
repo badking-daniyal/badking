@@ -11,7 +11,7 @@ BADKING — فریمورک همه‌کاره و AI-Native برای بازوها�
 
 from __future__ import annotations
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __all__ = [
     "__version__",
     "Bot",
