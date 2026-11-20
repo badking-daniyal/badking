@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### Session Storage Hardening (2026-11-20)
+- **PBKDF2 versioned**: فرمت ``BKS3`` با 600k iteration و تعداد rounds داخل هدر (محافظت شده توسط AAD). فایلهای ``BKS2`` قدیمی (200k) همچنان قابل خواندن و قابل ارتقا با `migrate_to_v2()` — مهاجرت تدریجی و سازگار.
+- **Atomic writes مقاوم**: فایل موقت منحصربهفرد، مجوز 0600، flush + fsync فایل، `os.replace` اتمیک، fsync پوشه (جایی که پشتیبانی شود)، پاکسازی موقت در شکست. فایل اصلی در تمام سناریوهای شکست حفظ میشود.
+- **قفل per-path (RLock)**: save/load/migrate/rollback/backup/get/put/delete تحت قفل — جلوگیری از lost update و race در همان process. محدودیت: قفل بین processها کار نمیکند (مستند شده).
+- ۱۷ تست regression جدید (crash پیش/پس replace، شکست fsync، فایل موقت خراب، permission، session ناقص، همزمانی save/migrate/rollback، reentrancy).
+- `benchmarks/bench_session.py` قابلتکرار — نتایج در `docs/SESSION_STORAGE_HARDENING.md`.
+- **۱۲۷۶ پاس + ۱ SKIP + ۵ live SKIP**. نسخه 0.2.2 بدون تغییر، PyPI منتشر نشد.
+
 ### Independent Security Review (2026-11-20)
 - **۶ نقص اثباتشده اصلاح شد** (همه با اسکریپت reproduction تأیید و با regression تست پوشش داده شدند):
   - rollback بکاپ خراب، فایل سالم را با داده ناخوانده جایگزین میکرد → validate کامل بکاپ

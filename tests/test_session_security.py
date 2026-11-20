@@ -73,7 +73,7 @@ def test_valid_session_roundtrip(tmp_path):
     path = tmp_path / "v2.session"
     store = SessionStore(path, password=PASSWORD)
     store.put(Session(access_token="a.b.c", user_id=1, name="Test"))
-    assert store.format_version(path.read_bytes()) == "BKS2"
+    assert store.format_version(path.read_bytes()) == "BKS3"
     loaded = SessionStore(path, password=PASSWORD).get("user:1")
     assert loaded is not None
     assert loaded.name == "Test"
@@ -167,7 +167,7 @@ def test_legacy_v1_migration(tmp_path):
     assert store.format_version(path.read_bytes()) == "BKS1-encrypted"
     assert store.needs_migration() is True
     assert store.migrate_to_v2() is True
-    assert store.format_version(path.read_bytes()) == "BKS2"
+    assert store.format_version(path.read_bytes()) == "BKS3"
     loaded = SessionStore(path, password=PASSWORD).get("user:7")
     assert loaded.name == "Legacy"
     assert loaded.access_token == "legacy.token.value"
@@ -205,7 +205,7 @@ def test_rollback_migration(tmp_path):
     original = path.read_bytes()
     store = SessionStore(path, password=PASSWORD)
     store.migrate_to_v2()
-    assert store.format_version(path.read_bytes()) == "BKS2"
+    assert store.format_version(path.read_bytes()) == "BKS3"
     assert store.rollback_migration() is True
     assert path.read_bytes() == original  # بازگشت دقیق بایت به بایت
 
@@ -275,7 +275,7 @@ async def test_concurrent_access(tmp_path):
     loaded = SessionStore(path, password=PASSWORD).load_all()
     assert len(loaded) >= 1
     # فایل نهایی معتبر است (دستکاری نشده)
-    assert store.format_version(path.read_bytes()) == "BKS2"
+    assert store.format_version(path.read_bytes()) == "BKS3"
 
 
 # ---------- 12. Regression: plain mode still works ----------

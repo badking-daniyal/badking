@@ -25,7 +25,9 @@ import hashlib
 import hmac
 import json
 import os
+import threading
 import time
+import weakref
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
@@ -46,13 +48,31 @@ MODE_AESGCM = b"\x02"       # جدید
 SALT_LEN = 16
 NONCE_LEN = 12              # nonce استاندارد GCM (96 بیت)
 TAG_LEN = 16                # Authentication Tag استاندارد GCM
-PBKDF2_ROUNDS = 200_000
+PBKDF2_ROUNDS = 200_000     # پیشفرض قدیمی — فقط برای خواندن فایلهای BKS2 قدیمی
+PBKDF2_ROUNDS_V3 = 600_000  # پیشفرض جدید (متناسب با توصیه OWASP 2023)
+MIN_PBKDF2_ROUNDS = 100_000  # کف امن برای هدرهای versioned
+MAX_PBKDF2_ROUNDS = 5_000_000  # سقف جلوگیری از DoS توسط هدر دستکاریشده
+
+# BKS2 قدیمی: ``BKS2\x02<salt16><nonce12><ciphertext+tag>`` — هدر ۳۳ بایتی.
+# BKS3 جدید: ``BKS2\x03<rounds:4 big-endian><salt16><nonce12><ct+tag>`` — هدر ۳۷ بایتی.
+# تعداد iteration داخل هدر (و AAD) ذخیره میشود تا فایلهای قدیمی با 200k
+# قابل خواندن بمانند و فایلهای جدید با 600k ساخته شوند — مهاجرت تدریجی.
+MODE_AESGCM_V3 = b"\x03"
+LEGACY_HEADER_LEN = 5 + SALT_LEN + NONCE_LEN   # 33
+V3_HEADER_LEN = LEGACY_HEADER_LEN + 4          # 37
+ROUNDS_OFFSET = 5                              # بعد از magic(4)+mode(1)
 
 
-def _derive_key(password: str, salt: bytes) -> bytes:
-    """کلید ۲۵۶ بیتی مشتقشده با PBKDF2-HMAC-SHA256 (استاندارد)."""
+def _derive_key(password: str, salt: bytes, rounds: int = PBKDF2_ROUNDS) -> bytes:
+    """کلید ۲۵۶ بیتی مشتقشده با PBKDF2-HMAC-SHA256 (استاندارد).
+
+    ``rounds`` از هدر فایل خوانده میشود؛ پیشفرض همان 200k قدیمی است تا
+    فایلهای BKS2 موجود بدون تغییر قابل خواندن بمانند.
+    """
+    if not MIN_PBKDF2_ROUNDS <= rounds <= MAX_PBKDF2_ROUNDS:
+        raise SessionError("تعداد iteration در هدر session نامعتبر است")
     return hashlib.pbkdf2_hmac(
-        "sha256", password.encode("utf-8"), salt, PBKDF2_ROUNDS, dklen=32
+        "sha256", password.encode("utf-8"), salt, rounds, dklen=32
     )
 
 
@@ -79,6 +99,80 @@ def _load_aesgcm():
             "برای session رمزنگاریشده بسته cryptography لازم است"
         ) from exc
     return AESGCM, InvalidTag
+
+
+# ---------- قفل و نوشتن اتمیک ----------
+
+# قفل per-path (داخل process). WeakValueDictionary باعث میشود قفلها بعد از
+# آزاد شدن Store مربوطه، خودکار پاک شوند (عدم نشت حافظه).
+# محدودیت صادقانه: این قفل فقط بین thread/coroutineهای همان process کار
+# میکند. دو process جداگانه نیازمند قفل فایل سیستمی (fcntl/msvcrt) هستند
+# که در این نسخه پیادهسازی نشده و در مستندات BLOCKED اعلام شده است.
+_PATH_LOCKS: weakref.WeakValueDictionary[str, threading.RLock] = (
+    weakref.WeakValueDictionary()
+)
+_PATH_LOCKS_GUARD = threading.Lock()
+
+
+def _lock_for(path: Path) -> threading.RLock:
+    key = str(path.resolve())
+    with _PATH_LOCKS_GUARD:
+        lock = _PATH_LOCKS.get(key)
+        if lock is None:
+            lock = threading.RLock()
+            _PATH_LOCKS[key] = lock
+        return lock
+
+
+def _fsync_dir(path: Path) -> None:
+    """fsync پوشه بعد از rename (جایی که سیستم پشتیبانی کند).
+
+    روی Windows باز کردن دایرکتوری با os.open معمولاً با خطا مواجه میشود؛
+    در آن صورت بیسر و صدن میگذریم — rename خودش اتمیک است.
+    """
+    try:
+        fd = os.open(str(path.parent), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _atomic_write(path: Path, data: bytes, *, fsync: bool = True) -> None:
+    """نوشتن مقاوم: tmp منحصربهفرد → 0600 → flush → fsync → replace → fsync dir.
+
+    فایل مقصد تا لحظه ``os.replace`` دست نخورده میماند. در صورت هر شکست،
+    فایل موقت پاک میشود و استثنا به بالا منتقل میگردد (هیچ ازدستدادن
+    بیصدای اطلاعات اصلی).
+    """
+    tmp = path.with_name(
+        f".{path.name}.{os.getpid()}.{threading.get_ident()}.{os.urandom(6).hex()}.tmp"
+    )
+    fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            if fsync:
+                os.fsync(f.fileno())
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+    try:
+        os.replace(tmp, path)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+    if fsync:
+        _fsync_dir(path)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:  # Windows — مجوز یونیکس قابل اعمال نیست
+        pass
 
 
 @dataclass
@@ -167,6 +261,8 @@ class SessionStore:
     @staticmethod
     def format_version(blob: bytes) -> str:
         """نسخه فرمت فایل را بدون رمزگشایی تشخیص میدهد."""
+        if blob.startswith(MAGIC_V2 + MODE_AESGCM_V3):
+            return "BKS3"
         if blob.startswith(MAGIC_V2 + MODE_AESGCM):
             return "BKS2"
         if blob.startswith(MAGIC_V1 + MODE_XOR_HMAC):
@@ -186,9 +282,12 @@ class SessionStore:
         AESGCM, _ = _load_aesgcm()
         salt = os.urandom(SALT_LEN)
         nonce = os.urandom(NONCE_LEN)  # nonce تصادفی و غیرتکراری
-        key = _derive_key(self.password, salt)
-        header = MAGIC_V2 + MODE_AESGCM + salt + nonce
-        # AAD = header → دستکاری salt/nonce/نسخه باعث شکست auth میشود.
+        rounds = PBKDF2_ROUNDS_V3
+        key = _derive_key(self.password, salt, rounds)
+        # هدر شامل تعداد iteration هم هست و بهعنوان AAD محافظت میشود.
+        header = (
+            MAGIC_V2 + MODE_AESGCM_V3 + rounds.to_bytes(4, "big") + salt + nonce
+        )
         ciphertext = AESGCM(key).encrypt(nonce, plaintext, header)
         return header + ciphertext  # tag توسط AESGCM به انتها اضافه میشود
 
@@ -227,19 +326,35 @@ class SessionStore:
                 raise SessionError("رمز session اشتباه است یا فایل دستکاری شده")
             return _xor_stream(body, key)
 
-        # BKS2 — AES-GCM
+        # BKS2 / BKS3 — AES-GCM
         if not self.password:
             raise SessionError(
                 "این session رمز دارد؛ BADKING_SESSION_KEY را تنظیم کن"
             )
         AESGCM, InvalidTag = _load_aesgcm()
-        salt = blob[5:21]
-        nonce = blob[21:33]
-        ciphertext = blob[33:]
-        header = blob[:33]
+
+        if version == "BKS3":
+            if len(blob) < V3_HEADER_LEN:
+                raise SessionError("فایل session ناقص است")
+            rounds = int.from_bytes(blob[ROUNDS_OFFSET:ROUNDS_OFFSET + 4], "big")
+            salt = blob[9:25]
+            nonce = blob[25:37]
+            ciphertext = blob[37:]
+            header = blob[:V3_HEADER_LEN]
+        else:  # BKS2 قدیمی — هدر ۳۳ بایتی، بدون فیلد rounds
+            if len(blob) < LEGACY_HEADER_LEN:
+                raise SessionError("فایل session ناقص است")
+            rounds = PBKDF2_ROUNDS
+            salt = blob[5:21]
+            nonce = blob[21:33]
+            ciphertext = blob[33:]
+            header = blob[:LEGACY_HEADER_LEN]
+
         if len(nonce) != NONCE_LEN or len(ciphertext) < TAG_LEN:
             raise SessionError("فایل session ناقص است")
-        key = _derive_key(self.password, salt)
+        # rounds داخل هدر است و توسط AAD هم محافظت میشود: دستکاری آن یا
+        # باعث SessionError (خارج از محدوده) یا شکست GCM tag میشود.
+        key = _derive_key(self.password, salt, rounds)
         try:
             return AESGCM(key).decrypt(nonce, ciphertext, header)
         except InvalidTag:
@@ -251,56 +366,46 @@ class SessionStore:
     # ---------- I/O ----------
 
     def load_all(self, *, allow_plain: bool = False) -> dict[str, Session]:
-        if not self.path.exists():
-            return {}
-        try:
-            blob = self.path.read_bytes()
-        except OSError:
-            raise SessionError("فایل session قابل خواندن نیست") from None
-        try:
-            data = json.loads(self._decrypt(blob, allow_plain=allow_plain).decode("utf-8"))
-        except SessionError:
-            raise
-        except Exception:
-            # JSON خراب / utf-8 نامعتبر — پیام امن، بدون افشای محتوا.
-            raise SessionError("فایل session خراب است") from None
-        if not isinstance(data, dict) or not isinstance(data.get("sessions"), dict):
-            raise SessionError("ساختار فایل session نامعتبر است")
-        out: dict[str, Session] = {}
-        for key, raw in data.get("sessions", {}).items():
-            out[key] = Session.from_dict(raw)
-        self._cache = out
-        return out
+        with _lock_for(self.path):
+            if not self.path.exists():
+                return {}
+            try:
+                blob = self.path.read_bytes()
+            except OSError:
+                raise SessionError("فایل session قابل خواندن نیست") from None
+            try:
+                data = json.loads(self._decrypt(blob, allow_plain=allow_plain).decode("utf-8"))
+            except SessionError:
+                raise
+            except Exception:
+                # JSON خراب / utf-8 نامعتبر — پیام امن، بدون افشای محتوا.
+                raise SessionError("فایل session خراب است") from None
+            if not isinstance(data, dict) or not isinstance(data.get("sessions"), dict):
+                raise SessionError("ساختار فایل session نامعتبر است")
+            out: dict[str, Session] = {}
+            for key, raw in data.get("sessions", {}).items():
+                out[key] = Session.from_dict(raw)
+            self._cache = out
+            return out
 
     def save_all(self, sessions: dict[str, Session]) -> None:
         payload = json.dumps(
             {"version": 2, "sessions": {k: v.to_dict() for k, v in sessions.items()}},
             ensure_ascii=False,
         ).encode("utf-8")
-        tmp = self.path.with_suffix(self.path.suffix + ".tmp")
         data = self._encrypt(payload)
-        # مجوز محدود از همان لحظه ایجاد فایل موقت (0600 روی یونیکس).
-        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        try:
-            with os.fdopen(fd, "wb") as f:
-                f.write(data)
-        except Exception:
-            tmp.unlink(missing_ok=True)
-            raise
-        os.replace(tmp, self.path)  # اتمیک
-        try:
-            os.chmod(self.path, 0o600)
-        except OSError:  # Windows — مجوز یونیکس قابل اعمال نیست
-            pass
-        self._cache = dict(sessions)
+        with _lock_for(self.path):
+            _atomic_write(self.path, data)
+            self._cache = dict(sessions)
 
     # ---------- Migration ----------
 
     def needs_migration(self) -> bool:
-        """آیا فایل فعلی فرمت قدیمی رمزنگاریشده است؟"""
+        """آیا فایل فعلی نیاز به ارتقا دارد (BKS1 یا BKS2 قدیمی)؟"""
         if not self.path.exists():
             return False
-        return self.format_version(self.path.read_bytes()) == "BKS1-encrypted"
+        version = self.format_version(self.path.read_bytes())
+        return version in ("BKS1-encrypted", "BKS1-plain", "BKS2")
 
     def backup(self, suffix: str = ".bak") -> Path:
         """بکاپ امن قبل از migration.
@@ -311,61 +416,52 @@ class SessionStore:
         if not self.path.exists():
             raise SessionError("فایلی برای بکاپ وجود ندارد")
         backup_path = self.path.with_suffix(self.path.suffix + suffix)
-        data = self.path.read_bytes()
-        # نوشتن اتمیک + محدود کردن مجوز
-        tmp = backup_path.with_suffix(backup_path.suffix + ".tmp")
-        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        try:
-            with os.fdopen(fd, "wb") as f:
-                f.write(data)
-        except Exception:
-            tmp.unlink(missing_ok=True)
-            raise
-        os.replace(tmp, backup_path)
-        try:
-            os.chmod(backup_path, 0o600)
-        except OSError:  # Windows — مجوز یونیکس قابل اعمال نیست
-            pass
+        with _lock_for(self.path):
+            data = self.path.read_bytes()
+            _atomic_write(backup_path, data)
         return backup_path
 
     def migrate_to_v2(self, *, backup: bool = True) -> bool:
-        """تبدیل ``BKS1-encrypted`` به ``BKS2`` (AES-GCM).
+        """ارتقای هر فرمت قدیمی به ``BKS3`` (AES-GCM + 600k PBKDF2).
 
         ایمنی:
             - قبل از تبدیل بکاپ گرفته میشود (پیشفرض).
             - ابتدا فایل قدیمی رمزگشایی میشود؛ اگر ناموفق بود، فایل اصلی
               دست نخورده باقی میماند.
             - نوشتن فایل جدید اتمیک است (os.replace).
-            - قابلتکرار است: اگر از قبل BKS2 باشد، ``False`` برمیگرداند.
+            - قابلتکرار است: اگر از قبل BKS3 باشد، ``False`` برمیگرداند.
             - Rollback: بکاپ ``<path>.bak`` است؛ ``rollback_migration()``
               آنرا برمیگرداند.
 
         Returns:
             ``True`` اگر تبدیل انجام شد، ``False`` اگر نیازی نبود.
         """
-        if not self.path.exists():
-            return False
-        version = self.format_version(self.path.read_bytes())
-        if version == "BKS2":
-            return False
-        if version == "BKS1-plain":
-            # فایل plain را به AES-GCM تبدیل میکنیم اگر رمز داریم.
-            if not self.password:
-                raise SessionError(
-                    "برای migration فایل plain باید رمز (password) تنظیم شود"
-                )
-        if backup:
-            self.backup()
+        # قفل RLock (قابل بازشدن مجدد توسط backup/load_all/save_all) باعث
+        # میشود کل توالی migration از سایر عملیات همان process جدا باشد.
+        with _lock_for(self.path):
+            if not self.path.exists():
+                return False
+            version = self.format_version(self.path.read_bytes())
+            if version == "BKS3":
+                return False
+            if version == "BKS1-plain":
+                # فایل plain را به AES-GCM تبدیل میکنیم اگر رمز داریم.
+                if not self.password:
+                    raise SessionError(
+                        "برای migration فایل plain باید رمز (password) تنظیم شود"
+                    )
+            if backup:
+                self.backup()
 
-        # ۱) رمزگشایی فایل قدیمی (در صورت شکست، اصلی دست نخورده میماند).
-        #    اجازه صریح plain فقط در مسیر migration داده میشود تا فایل
-        #    قدیمی قابل تبدیل بماند، بدون اینکه خواندن عادی فایل plain جعلی
-        #    را ممکن کند.
-        sessions = self.load_all(allow_plain=True)
-        # ۲) نوشتن اتمیک با فرمت جدید
-        self.save_all(sessions)
-        self._cache = dict(sessions)
-        return True
+            # ۱) رمزگشایی فایل قدیمی (در صورت شکست، اصلی دست نخورده میماند).
+            #    اجازه صریح plain فقط در مسیر migration داده میشود تا فایل
+            #    قدیمی قابل تبدیل بماند، بدون اینکه خواندن عادی فایل plain
+            #    جعلی را ممکن کند.
+            sessions = self.load_all(allow_plain=True)
+            # ۲) نوشتن اتمیک با فرمت جدید
+            self.save_all(sessions)
+            self._cache = dict(sessions)
+            return True
 
     def rollback_migration(self, backup_path: str | Path | None = None) -> bool:
         """بازگردانی بکاپ قبل از migration.
@@ -376,26 +472,21 @@ class SessionStore:
         backup_path = Path(backup_path) if backup_path else self.path.with_suffix(
             self.path.suffix + ".bak"
         )
-        if not backup_path.exists():
-            return False
-        data = backup_path.read_bytes()
+        with _lock_for(self.path):
+            if not backup_path.exists():
+                return False
+            data = backup_path.read_bytes()
 
-        # تأیید کامل بکاپ قبل از جایگزینی. چک کردن تنها ۶ بایت magic کافی
-        # نیست: یک بکاپ با header سالم و بدنه خراب، فایل زنده سالم را با
-        # داده غیرقابلخواندن جایگزین میکرد. اینجا بکاپ واقعاً رمزگشایی
-        # میشود تا HMAC / GCM tag / JSON هم تأیید شوند.
-        probe = SessionStore(backup_path, password=self.password)
-        probe.load_all(allow_plain=True)  # در صورت خرابی SessionError — فایل زنده دست نخورده میماند
+            # تأیید کامل بکاپ قبل از جایگزینی. چک کردن تنها ۶ بایت magic کافی
+            # نیست: یک بکاپ با header سالم و بدنه خراب، فایل زنده سالم را با
+            # داده غیرقابلخواندن جایگزین میکرد. اینجا بکاپ واقعاً رمزگشایی
+            # میشود تا HMAC / GCM tag / JSON هم تأیید شوند.
+            probe = SessionStore(backup_path, password=self.password)
+            probe.load_all(allow_plain=True)  # در صورت خرابی SessionError — فایل زنده دست نخورده میماند
 
-        tmp = self.path.with_suffix(self.path.suffix + ".rollback")
-        try:
-            tmp.write_bytes(data)
-            os.replace(tmp, self.path)
-        except Exception:
-            tmp.unlink(missing_ok=True)
-            raise
-        self._cache = {}
-        return True
+            _atomic_write(self.path, data)
+            self._cache = {}
+            return True
 
     # ---------- API ----------
 
@@ -408,25 +499,28 @@ class SessionStore:
         return "default"
 
     def get(self, key: str = "default") -> Session | None:
-        if not self._cache:
-            self.load_all()
-        return self._cache.get(key)
+        with _lock_for(self.path):
+            if not self._cache:
+                self.load_all()
+            return self._cache.get(key)
 
     def put(self, session: Session) -> str:
-        sessions = self._cache or self.load_all()
-        key = self.key_for(session)
-        session.touch()
-        sessions[key] = session
-        self.save_all(sessions)
-        return key
+        with _lock_for(self.path):
+            sessions = self._cache or self.load_all()
+            key = self.key_for(session)
+            session.touch()
+            sessions[key] = session
+            self.save_all(sessions)
+            return key
 
     def delete(self, key: str) -> bool:
-        sessions = self._cache or self.load_all()
-        if key not in sessions:
-            return False
-        del sessions[key]
-        self.save_all(sessions)
-        return True
+        with _lock_for(self.path):
+            sessions = self._cache or self.load_all()
+            if key not in sessions:
+                return False
+            del sessions[key]
+            self.save_all(sessions)
+            return True
 
     def list_accounts(self) -> list[dict[str, Any]]:
         sessions = self._cache or self.load_all()

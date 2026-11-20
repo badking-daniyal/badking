@@ -55,7 +55,7 @@ def test_rollback_rejects_corrupt_backup(tmp_path):
 
     with pytest.raises(SessionError):
         s.rollback_migration()
-    # Live file must remain the good BKS2 session.
+    # Live file must remain the good BKS3 session.
     assert p.read_bytes() == good
     assert s.load_all()
 
@@ -107,7 +107,7 @@ def test_plain_migration_still_works(tmp_path):
     )
     s = SessionStore(p, password=PW)
     assert s.migrate_to_v2() is True
-    assert s.format_version(p.read_bytes()) == "BKS2"
+    assert s.format_version(p.read_bytes()) == "BKS3"
     assert s.get("user:1").access_token == "OLD"
 
 
