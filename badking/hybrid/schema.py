@@ -41,7 +41,9 @@ NESTED: dict[str, dict[str, object]] = {
     "MessageReaction": {"id": 1, "date": 2, "reactions": {"field": 3, "fields": "Reaction", "repeated": True}},
     "MessageViews": {"message": {"field": 1, "fields": "OtherMessage"}, "views": 2},
     "Wallet": {"isMerchant": 1, "app": 2, "balance": 3, "token": 4, "level": 5, "pan": 6, "account": 7},
-    "FileInfo": {"fileId": 1, "accessHash": 2},
+    # aiobale 0.3.9 FileInfo: file_id=1, access_hash=2, file_storage_version=3
+    # (IntValue(value=1) پیشفرض). فیلد 3 اختیاری است و در درخواست ارسال نمیشود.
+    "FileInfo": {"fileId": 1, "accessHash": 2, "fileStorageVersion": {"field": 3, "fields": "IntValue"}},
     "FileUploadInfo": {"fileId": 1, "url": 2, "chunkSize": 4},
     "GiftPacket": {"count": 1, "totalAmount": 2, "givingType": 3, "token": 4, "message": 5, "ownerId": 6, "showAmounts": 7},
     "BanData": {"bannedId": 1, "bannerId": 2},
@@ -52,7 +54,10 @@ NESTED: dict[str, dict[str, object]] = {
     "Condition": {"exceptedPermissions": 1, "contacts": 2},
 }
 
-NESTED["FileURL"] = {"url": 1, "name": 2, "size": 3}
+# aiobale 0.3.9 FileURL (types/file_url.py) — شماره فیلدها از سورس رسمی:
+#   file_id=1, url=2, timeout=3 (ms), chunk_size=7 (پیشفرض 65536)
+# قبلاً به اشتباه {url:1, name:2, size:3} بود که پاسخ سرور را خراب دیکود میکرد.
+NESTED["FileURL"] = {"fileId": 1, "url": 2, "timeout": 3, "chunkSize": 7}
 NESTED["MessageReactions"] = {
     "message": {"field": 1, "fields": "OtherMessage"},
     "reactions": {"field": 2, "fields": "Reaction", "repeated": True},

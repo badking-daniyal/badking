@@ -34,6 +34,15 @@ from .auth import (
     normalize_phone,
 )
 from .client import Dialog, Message, Peer, SelfBot, SelfBotError
+from .download import (
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_MAX_SIZE,
+    DownloadError,
+    filename_from_url,
+    resolve_destination,
+    sanitize_filename,
+    write_stream_atomic,
+)
 from .jwt_verify import (
     JWTError,
     JWTNotConfigured,
@@ -190,7 +199,10 @@ __all__ = [
     "AuthError",
     "AuthFlow",
     "CodeRequest",
+    "DEFAULT_CHUNK_SIZE",
+    "DEFAULT_MAX_SIZE",
     "Dialog",
+    "DownloadError",
     "HYBRID_WARNING",
     "HybridDisabledError",
     "HybridPlugin",
@@ -212,6 +224,10 @@ __all__ = [
     "PermissionDenied",
     "PermissionPolicy",
     "ProtoError",
+    "filename_from_url",
+    "resolve_destination",
+    "sanitize_filename",
+    "write_stream_atomic",
     "RpcFailed",
     "RpcRegistry",
     "RpcSpec",

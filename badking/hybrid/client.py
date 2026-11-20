@@ -34,6 +34,15 @@ from .rpc import (
     make_peer,
     registry as default_registry,
 )
+from .download import (
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_MAX_SIZE,
+    DownloadError,
+    filename_from_url,
+    resolve_destination,
+    sanitize_filename,
+    write_stream_atomic,
+)
 from .session import Session, SessionStore
 from .transport import NotConnected, RpcFailed, RpcTimeout, Transport
 from ..utils import extract_join_token
@@ -113,6 +122,62 @@ class Message:
         if self._client is None or self.peer is None:
             raise SelfBotError("این پیام به کلاینت وصل نیست")
         return await self._client.mark_read(self.peer)
+
+    def media_info(self) -> dict[str, Any] | None:
+        """اطلاعات رسانه پیام (fileId/accessHash/name/size) یا ``None``.
+
+        ساختار از اسکیمای تأییدشده aiobale 0.3.9:
+        ``content.document`` → DocumentMessage{fileId:1, accessHash:2, ...}.
+        """
+        content = self.raw.get("content") if isinstance(self.raw, dict) else None
+        if not isinstance(content, dict):
+            return None
+        doc = content.get("document")
+        if not isinstance(doc, dict):
+            return None
+        file_id = doc.get("fileId", doc.get("file_id"))
+        if file_id is None:
+            return None
+        return {
+            "file_id": file_id,
+            "access_hash": doc.get("accessHash", doc.get("access_hash", 0)),
+            "name": doc.get("name"),
+            "size": doc.get("size"),
+            "mime_type": doc.get("mimeType", doc.get("mime_type")),
+        }
+
+    async def download(
+        self,
+        destination: str | Path | None = None,
+        *,
+        base_dir: str | Path | None = None,
+        overwrite: bool = False,
+        max_size: int = DEFAULT_MAX_SIZE,
+        on_progress: Callable[[int, int], Any] | None = None,
+    ) -> Path:
+        """دانلود رسانه این پیام به دیسک.
+
+        ``fileId`` و ``accessHash`` از ``raw`` پیام استخراج میشوند.
+        در صورت نبود رسانه ``DownloadError`` میدهد.
+        """
+        info = self.media_info()
+        if info is None:
+            raise DownloadError(
+                "این پیام رسانهای برای دانلود ندارد",
+                hint="از Message.download فقط روی پیام حاوی document/photo/... استفاده کن.",
+            )
+        if self._client is None:
+            raise SelfBotError("این پیام به کلاینت وصل نیست")
+        return await self._client.download_file(
+            int(info["file_id"]),
+            int(info["access_hash"] or 0),
+            destination=destination,
+            base_dir=base_dir,
+            filename=str(info.get("name") or ""),
+            overwrite=overwrite,
+            max_size=max_size,
+            on_progress=on_progress,
+        )
 
 
 @dataclass
@@ -681,6 +746,149 @@ class SelfBot:
                 response.raise_for_status()
         except Exception as exc:  # noqa: BLE001
             raise SelfBotError(f"آپلود فایل نشد: {exc}") from exc
+
+    # ---------- دانلود رسانه ----------
+    async def get_file_url(self, file_id: int, access_hash: int = 0) -> dict[str, Any]:
+        """گرفتن URL موقت دانلود از RPC تأییدشده ``files.GetNasimFileUrl``.
+
+        شماره فیلدها از سورس رسمی aiobale 0.3.9 تأیید شدهاند:
+        درخواست ``file``=1 (FileInfo{fileId:1, accessHash:2}) و پاسخ
+        ``file_urls``=1 (FileURL{fileId:1, url:2, timeout:3, chunkSize:7}).
+
+        Returns:
+            دیکشنری ``{"url", "chunk_size", "timeout", "file_id"}``.
+
+        Raises:
+            DownloadError: اگر سرور URLای برنگرداند.
+        """
+        try:
+            resp = await self.call(
+                "files.GetNasimFileUrl",
+                file={"fileId": int(file_id), "accessHash": int(access_hash or 0)},
+            )
+        except Exception as exc:  # noqa: BLE001 — خطای RPC/شبکه
+            raise DownloadError(f"گرفتن URL دانلود نشد: {type(exc).__name__}") from exc
+
+        rows = resp.get("file_urls") or []
+        if isinstance(rows, dict):
+            rows = [rows]
+        if not isinstance(rows, list) or not rows:
+            raise DownloadError(
+                "سرور URL دانلودی برنگرداند",
+                hint="file_id/access_hash را چک کن یا لینک منقضی شده است.",
+            )
+        first = rows[0] if isinstance(rows[0], dict) else {}
+        url = first.get("url")
+        if isinstance(url, bytes):
+            url = url.decode("utf-8", "replace")
+        if not url:
+            raise DownloadError("پاسخ سرور فاقد URL است")
+        # aiobale گاهی chunk_size را داخل {"1": value} میپیچد.
+        chunk = first.get("chunkSize", first.get("chunk_size", DEFAULT_CHUNK_SIZE))
+        if isinstance(chunk, bytes):
+            try:
+                chunk = int.from_bytes(chunk, "big")
+            except Exception:
+                chunk = DEFAULT_CHUNK_SIZE
+        if isinstance(chunk, dict):
+            chunk = chunk.get("value", chunk.get("1", DEFAULT_CHUNK_SIZE))
+        try:
+            chunk = int(chunk)
+        except (TypeError, ValueError):
+            chunk = DEFAULT_CHUNK_SIZE
+        if chunk <= 0 or chunk > 16 * 1024 * 1024:
+            chunk = DEFAULT_CHUNK_SIZE
+        return {
+            "url": str(url),
+            "chunk_size": chunk,
+            "timeout": first.get("timeout", 0),
+            "file_id": first.get("fileId", file_id),
+        }
+
+    async def download_file(
+        self,
+        file_id: int,
+        access_hash: int = 0,
+        *,
+        destination: str | Path | None = None,
+        base_dir: str | Path | None = None,
+        filename: str = "",
+        overwrite: bool = False,
+        max_size: int = DEFAULT_MAX_SIZE,
+        chunk_size: int | None = None,
+        timeout: float | None = None,
+        on_progress: Callable[[int, int], Any] | None = None,
+    ) -> Path:
+        """دانلود جریانی رسانه به دیسک (بدون بارگذاری کامل در RAM).
+
+        Args:
+            file_id: شناسه فایل از ``Message.media_info()``.
+            access_hash: هش دسترسی همان پیام.
+            destination: پوشه یا مسیر فایل. پیشفرض پوشه جاری.
+            base_dir: مرز مجاز مسیر (جلوگیری از خروج از پوشه).
+            filename: نام دلخواه؛ در صورت نبود از URL استخراج میشود.
+            overwrite: در صورت ``False``، فایل تکراری با پسوند ``(1)`` ذخیره میشود.
+            max_size: سقف حجم (پیشفرض 2 GiB).
+            chunk_size: اندازه قطعه؛ پیشفرض مقدار پیشنهادی سرور.
+            timeout: timeout شبکه به ثانیه (پیشفرض ``self.timeout``).
+            on_progress: فراخوانی ``(downloaded, total)``.
+
+        Returns:
+            مسیر ``Path`` فایل ذخیرهشده.
+
+        Raises:
+            DownloadError: خطای مسیر، حجم، شبکه، timeout یا نوشتن.
+        """
+        info = await self.get_file_url(file_id, access_hash)
+        chosen_name = sanitize_filename(filename, fallback="") or filename_from_url(
+            info["url"]
+        )
+        target = resolve_destination(
+            destination,
+            base_dir=base_dir,
+            filename=chosen_name,
+            fallback_name=f"file_{file_id}.bin",
+        )
+        size = chunk_size or info["chunk_size"]
+        net_timeout = timeout if timeout is not None else self.timeout
+
+        try:
+            import httpx
+        except ImportError as exc:  # pragma: no cover
+            raise DownloadError("برای دانلود به httpx نیاز است: pip install httpx") from exc
+
+        # aiobale هدرهای User-Agent و Origin را روی GET دانلود میفرستد،
+        # نه توکن دسترسی. ما همان رفتار را دنبال میکنیم.
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/135.0.0.0 Safari/537.36"
+            ),
+            "Origin": "https://web.bale.ai",
+        }
+
+        async def _stream() -> AsyncIterator[bytes]:
+            try:
+                async with httpx.AsyncClient(timeout=net_timeout, follow_redirects=True) as client:
+                    async with client.stream("GET", info["url"], headers=headers) as resp:
+                        resp.raise_for_status()
+                        async for piece in resp.aiter_bytes(chunk_size=size):
+                            yield piece
+            except Exception as exc:  # noqa: BLE001
+                raise DownloadError(
+                    f"خطای شبکه هنگام دانلود: {type(exc).__name__}"
+                ) from exc
+
+        await write_stream_atomic(
+            _stream(),
+            target,
+            max_size=max_size,
+            chunk_size=size,
+            overwrite=overwrite,
+            on_progress=on_progress,
+        )
+        return target
 
     async def edit_message(
         self, ref: str | int | Peer, message_id: int, text: str

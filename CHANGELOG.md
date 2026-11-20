@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### Media Download in SelfBot (2026-11-20)
+- **تصحیح باگ پروتکلی**: `NESTED["FileURL"]` از `{url:1,name:2,size:3}` به مقادیر تأییدشده aiobale 0.3.9 `{fileId:1,url:2,timeout:3,chunkSize:7}` اصلاح شد؛ `FileInfo.fileStorageVersion=3` اضافه شد.
+- ماژول `badking/hybrid/download.py`: sanitize نام فایل، جلوگیری Path Traversal، `base_dir` بهعنوان مرز، فایل تکراری `(1)`، نوشتن اتمیک `.part` + fsync + `os.replace`، پاکسازی در شکست، جریان چانکبهچانک (بدون بارگذاری کامل در RAM)، محدودیت حجم قابل تنظیم.
+- `SelfBot.get_file_url()` و `SelfBot.download_file()` + `Message.media_info()` / `Message.download()`.
+- ۳۱ تست آفلاین (`tests/test_media_download.py`) شامل پروتکل، traversal، فایل خالی/بزرگ، قطع اتصال، timeout، مجوز، تکرار، همزمانی.
+- مستندات `docs/MEDIA_DOWNLOAD.md`; `asyncio_mode=auto` در pytest.ini (تحت پوشش تستهای موجود).
+- ۱۳۰۷ پاس، ۱ SKIP، exit 0. نسخه 0.2.2 بدون تغییر، PyPI منتشر نشد. رفتار واقعی سرور BLOCKED (بدون حساب آزمایشی).
+
 ### BKS3 Final Verification & Client API Readiness (2026-11-20)
 - ممیزی مستقل BKS3: تمام موارد امنیتی (AAD، tag، downgrade، DoS، هدر ناقص، migration) با شواهد اجرایی تأیید شد.
 - **Lost update بین دو process اثبات شد** (۶ باقی ماند از ۱۱ انتظار) — قفل between-process صریحاً NOT_IMPLEMENTED و مستند شد.
