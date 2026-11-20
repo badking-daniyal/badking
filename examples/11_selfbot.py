@@ -20,11 +20,7 @@ from badking import SelfBot, hybrid_warning
 async def main() -> None:
     print(hybrid_warning())
 
-    # ack_risk=True اجباری است — بدون آن روشن نمی‌شود
-    bot = SelfBot(
-        session="badking.session",
-        ack_risk=True,
-    )
+    bot = SelfBot(session="badking.session")
 
     await bot.connect()
     me = await bot.get_me()
@@ -54,7 +50,7 @@ async def main() -> None:
     for dialog in dialogs[:5]:
         print(f"  {dialog.title} ({dialog.peer_type})")
 
-    await bot.disconnect()
+    await bot.close()
 
 
 if __name__ == "__main__":

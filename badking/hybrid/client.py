@@ -20,6 +20,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, AsyncIterator, Callable
+from urllib.parse import urljoin
 
 from .auth import DEFAULT_WS_URL, AuthFlow, AuthError, interactive_login, normalize_phone
 from .proto import decode, get_int, get_str
@@ -41,6 +42,7 @@ from .download import (
     filename_from_url,
     resolve_destination,
     sanitize_filename,
+    validate_download_url,
     write_stream_atomic,
 )
 from .session import Session, SessionStore
@@ -868,13 +870,30 @@ class SelfBot:
             "Origin": "https://web.bale.ai",
         }
 
+        # جلوگیری از SSRF: URL سرور و هر ریدایرکت باید دوباره اعتبارسنجی شود.
+        validate_download_url(info["url"])
+
         async def _stream() -> AsyncIterator[bytes]:
             try:
-                async with httpx.AsyncClient(timeout=net_timeout, follow_redirects=True) as client:
-                    async with client.stream("GET", info["url"], headers=headers) as resp:
-                        resp.raise_for_status()
-                        async for piece in resp.aiter_bytes(chunk_size=size):
-                            yield piece
+                # follow_redirects=False: ریدایرکت دستی و با validate میشود.
+                async with httpx.AsyncClient(timeout=net_timeout, follow_redirects=False) as client:
+                    current = info["url"]
+                    for _ in range(6):  # حداکثر ۵ ریدایرکت + درخواست اول
+                        async with client.stream("GET", current, headers=headers) as resp:
+                            status = getattr(resp, "status_code", 200)
+                            if status in {301, 302, 303, 307, 308}:
+                                location = (getattr(resp, "headers", None) or {}).get("location")
+                                if not location:
+                                    raise DownloadError("ریدایرکت دانلود فاقد Location است")
+                                current = validate_download_url(urljoin(current, location))
+                                continue
+                            resp.raise_for_status()
+                            async for piece in resp.aiter_bytes(chunk_size=size):
+                                yield piece
+                            return
+                    raise DownloadError("تعداد ریدایرکتهای دانلود بیش از حد مجاز است")
+            except DownloadError:
+                raise
             except Exception as exc:  # noqa: BLE001
                 raise DownloadError(
                     f"خطای شبکه هنگام دانلود: {type(exc).__name__}"
@@ -901,7 +920,9 @@ class SelfBot:
             message_id=message_id,
             updated_message=make_text_content(text),
         )
-        return bool(resp.get("message_id") or resp.get("date"))
+        # پاسخ ثبتشده UpdateMessage={"seq":1,"date":2} است — message_id
+        # اصلاً فیلد پاسخ نیست. نبود استثنا به معنای موفقیت است.
+        return True
 
     async def delete_messages(
         self, ref: str | int | Peer, message_ids: list[int], revoke: bool = True
@@ -997,14 +1018,22 @@ class SelfBot:
         return True
 
     async def stop_typing(self, ref: str | int | Peer) -> bool:
-        """توقف تایپ."""
+        """توقف تایپ.
+
+        فیلد ۲ (``typing_type``) طبق fixture رسمی aiobale اجباری است.
+        """
         peer = await self.get_entity(ref)
-        await self.call("presence.StopTyping", peer=peer.to_dict())
+        await self.call(
+            "presence.StopTyping", peer=peer.to_dict(), typing_type=1
+        )
         return True
 
-    async def set_online(self) -> bool:
-        """اعلام آنلاین بودن."""
-        await self.call("presence.SetOnline", is_online=True)
+    async def set_online(self, timeout: int = 60) -> bool:
+        """اعلام آنلاین بودن به مدت ``timeout`` ثانیه.
+
+        فیلد ۲ (``timeout``) طبق fixture رسمی aiobale اجباری است.
+        """
+        await self.call("presence.SetOnline", is_online=True, timeout=int(timeout))
         return True
 
     async def pin_message(self, ref: str | int | Peer, message_id: int) -> bool:
@@ -1031,7 +1060,9 @@ class SelfBot:
         """پیام‌های سنجاق‌شده."""
         peer = await self.get_entity(ref)
         resp = await self.call("messaging.LoadPinnedMessages", peer=peer.to_dict())
-        rows = resp.get("pins_data") or resp.get("pinsData") or []
+        # اسکیمای ثبتشده: LoadPinnedMessages → {"data": [...]} (فیلد ۱).
+        # کلید قدیمی pins_data متعلق به GetPins است و اینجا همیشه خالی بود.
+        rows = resp.get("data") or resp.get("pins_data") or resp.get("pinsData") or []
         if not isinstance(rows, list):
             rows = [rows]
         return [self._parse_message(r, peer) for r in rows]
@@ -1130,8 +1161,13 @@ class SelfBot:
         """لیست مخاطبین."""
         return await self.call("user.GetContacts")
 
-    async def add_contact(self, user_id: int, name: str) -> dict:
-        """افزودن مخاطب با آیدی کاربر."""
+    async def add_contact(self, user_id: int, name: str = "") -> dict:
+        """افزودن مخاطب با آیدی کاربر.
+
+        ``name`` برای سازگاری با نسخههای قبلی پذیرفته میشود ولی RPC
+        ``user.AddContact`` طبق اسکیمای تأییدشده فقط ``user_id`` و ``type``
+        دارد، بنابراین نامی روی wire ارسال نمیشود.
+        """
         return await self.call("user.AddContact", user_id=int(user_id), type=0)
 
     async def block_user(self, user_id: int) -> bool:

@@ -41,6 +41,7 @@ from .download import (
     filename_from_url,
     resolve_destination,
     sanitize_filename,
+    validate_download_url,
     write_stream_atomic,
 )
 from .jwt_verify import (
@@ -227,6 +228,7 @@ __all__ = [
     "filename_from_url",
     "resolve_destination",
     "sanitize_filename",
+    "validate_download_url",
     "write_stream_atomic",
     "RpcFailed",
     "RpcRegistry",

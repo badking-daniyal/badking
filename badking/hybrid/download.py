@@ -11,18 +11,27 @@
 
 from __future__ import annotations
 
+import ipaddress
 import os
 import re
+import socket
 import tempfile
 from pathlib import Path
 from typing import AsyncIterator
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 DEFAULT_CHUNK_SIZE = 64 * 1024      # aiobale FileURL.chunk_size پیشفرض
 DEFAULT_MAX_SIZE = 2 * 1024**3      # 2 GiB سقف پیشفرض قابل تنظیم
 
 # الگوی نام فایل امن: فقط حروف، اعداد، نقطه، خط تیره و زیرخط.
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
+
+# نامهای رزروشده دستگاه در ویندوز — حتی با پسوند (CON.txt) قابل استفاده نیستند.
+_WINDOWS_RESERVED = frozenset({
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+})
 
 
 class DownloadError(Exception):
@@ -52,7 +61,66 @@ def sanitize_filename(name: str, *, fallback: str = "file.bin") -> str:
     if not cleaned or cleaned in {".", ".."}:
         return fallback
     # طول نام فایل را محدود میکنیم (NAMELEN روی اکثر سیستمها 255)
-    return cleaned[:200]
+    cleaned = cleaned[:200]
+    # نام رزرو ویندوز (با یا بدون پسوند) روی برخی سیستمها نوشتن را خراب میکند.
+    stem = cleaned.split(".", 1)[0].upper()
+    if stem in _WINDOWS_RESERVED:
+        return fallback
+    return cleaned
+
+
+def validate_download_url(url: str) -> str:
+    """جلوگیری از SSRF: فقط HTTP(S) با میزبان عمومی مجاز است.
+
+    URL معمولاً از سرور بله میآید، ولی اعتماد کور به آن (بهخصوص همراه با
+    ``follow_redirects``) میتواند درخواست را به localhost یا شبکه داخلی
+    بفرستد. این تابع:
+
+      * فقط schemeهای ``https`` / ``http`` را میپذیرد،
+      * میزبانهای IP لوپبک/خصوصی/link-local/رزرو را رد میکند،
+      * hostnameها را resolve کرده و تک تک IPها را بررسی میکند.
+
+    نکته: بررسی DNS در لحظه اعتبارسنجی، DNS rebinding را بهطور کامل حذف
+    نمیکند (بین resolve و connect فاصله است)؛ برای حذف کامل باید IP پین شود
+    که نیاز به کنترل اتصال httpx دارد و فعلاً BLOCKED است.
+    """
+    try:
+        parsed = urlparse(url)
+    except Exception as exc:
+        raise DownloadError("URL دانلود نامعتبر است") from exc
+    if parsed.scheme not in {"https", "http"} or not parsed.hostname:
+        raise DownloadError(
+            "فقط URLهای HTTP/HTTPS برای دانلود مجازاند",
+            hint="URL برگشتی از سرور بله غیرقابلقبول است.",
+        )
+    host = parsed.hostname
+    # IP صریح (loopback/private/...) حتی بدون DNS قابل تشخیص است.
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if (literal.is_private or literal.is_loopback or literal.is_link_local
+                or literal.is_reserved or literal.is_multicast):
+            raise DownloadError(
+                "دانلود از آدرس خصوصی/داخلی مجاز نیست",
+                hint="سرور URL داخلی برگردانده است (SSRF مسدود شد).",
+            )
+        return url
+    try:
+        infos = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except (socket.gaierror, OSError):
+        # DNS در محیط آفلاین/تست دردسترس نیست؛ httpx خودش خطای شبکه میدهد.
+        # جلوگیری از SSRF برای IPهای صریح و hostnameهای قابل resolve انجام شد.
+        return url
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            raise DownloadError(
+                "دانلود از آدرس خصوصی/داخلی مجاز نیست",
+                hint="سرور URL داخلی برگردانده است (SSRF مسدود شد).",
+            )
+    return url
 
 
 def filename_from_url(url: str, *, fallback: str = "file.bin") -> str:

@@ -22,7 +22,7 @@ OUTPUT = "backup.json"
 async def main() -> None:
     print(hybrid_warning())
 
-    bot = SelfBot(session="badking.session", ack_risk=True)
+    bot = SelfBot(session="badking.session")
     await bot.connect()
 
     chat = await bot.get_entity(CHAT)
@@ -69,7 +69,7 @@ async def main() -> None:
     size_kb = path.stat().st_size / 1024
     print(f"\n{len(messages)} پیام در {path} ذخیره شد ({size_kb:.0f} کیلوبایت)")
 
-    await bot.disconnect()
+    await bot.close()
 
 
 if __name__ == "__main__":

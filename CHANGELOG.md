@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### Beta Hardening — Independent Audit Fixes (2026-11-20)
+- **سه ممیزی مستقل** (Client/Bot API، امنیت، تست/مستندات/CI) مستقیماً از کد خوانده شد؛ ادعاهای reports قبلی دوباره تأیید شدند.
+- **باگهای Client API رفعشده**: `get_pinned()` کلید پاسخ اشتباه (`pins_data` → `data`)؛ `edit_message()` تشخیص موفقیت بر اساس فیلد nonexistent؛ `stop_typing()` و `set_online()` فیلدهای اجباری `typing_type`/`timeout`؛ `add_contact()` پارامتر بیاثر (مستند شد چون پروتکل جای name ندارد).
+- **امنیت**: deny-by-default واقعی در `PermissionPolicy` (نقشه کامل ۳۲ RPC state-changing)؛ جلوگیری SSRF با `validate_download_url` و ریدایرکت دستی validateشده؛ نامهای رزرو ویندوز؛ هش کردن شماره تلفن در DEBUG log؛ `doctor` فقط ۴ کاراکتر آخر توکن؛ Secret scanner شامل untrackedها.
+- **مستندات/مثالها**: حذف متدهای وجودنداشته (`ack_risk`, `disconnect`, `on_self_*`, `idle`, `login`) از مثالهای ۱۱–۱۴ و README فارسی/انگلیسی.
+- **تستها**: ۳۷ Regression test جدید (`tests/test_beta_hardening.py`)؛ ۱۳۴۴ پاس + ۱ SKIP، exit 0. نسخه 0.2.2 بدون تغییر، PyPI منتشر نشد.
+- **BLOCKED باقی**: Request Correlation، Media Resume، JWT verification، Live verification — بدون شواهد پروتکل/حساب آزمایشی حدسی نزده شد.
+
 ### Media Download in SelfBot (2026-11-20)
 - **تصحیح باگ پروتکلی**: `NESTED["FileURL"]` از `{url:1,name:2,size:3}` به مقادیر تأییدشده aiobale 0.3.9 `{fileId:1,url:2,timeout:3,chunkSize:7}` اصلاح شد؛ `FileInfo.fileStorageVersion=3` اضافه شد.
 - ماژول `badking/hybrid/download.py`: sanitize نام فایل، جلوگیری Path Traversal، `base_dir` بهعنوان مرز، فایل تکراری `(1)`، نوشتن اتمیک `.part` + fsync + `os.replace`، پاکسازی در شکست، جریان چانکبهچانک (بدون بارگذاری کامل در RAM)، محدودیت حجم قابل تنظیم.

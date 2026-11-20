@@ -39,10 +39,21 @@ ALLOWLIST = {
 
 
 def tracked_files() -> list[str]:
+    """فایلهای تحت کنترل git + فایلهای untracked (غیر ignore) را برگردان.
+
+    اسکن فقط فایلهای tracked کافی نیست: یک فایل حاوی توکن میتواند قبل از
+    commit هم در مخزن وجود داشته باشد. بنابراین untrackedها را هم اسکن میکنیم.
+    """
     out = subprocess.run(
         [GIT, "ls-files"], cwd=ROOT, capture_output=True, text=True
     ).stdout
-    return [line for line in out.splitlines() if line]
+    extra = subprocess.run(
+        [GIT, "ls-files", "--others", "--exclude-standard"],
+        cwd=ROOT, capture_output=True, text=True,
+    ).stdout
+    names = set(line for line in out.splitlines() if line)
+    names.update(line for line in extra.splitlines() if line)
+    return sorted(names)
 
 
 def main() -> int:

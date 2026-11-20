@@ -154,14 +154,16 @@ importها را عوض می‌کند، متدهایی که مطمئن است ر�
 
 ## Self-bot / API داخلی
 
-این لایه با پروتکل داخلی بله حرف می‌زند، نه با API ربات. پیش‌فرض خاموش است و
-تأیید صریح می‌خواهد:
+این لایه با پروتکل داخلی بله حرف میزند، نه با API ربات. در ماژول جدا نگه
+داشته شده تا بقیه فریمورک به آن وابسته نباشد. برای ورود تعاملی شماره بدهید،
+یا یک session ذخیرهشده بارگذاری کنید:
 
 ```python
-from badking import SelfBot
+from badking import SelfBot, hybrid_warning
 
-client = SelfBot(ack_risk=True)
-await client.login(phone="0912...")
+print(hybrid_warning())  # قبل از شروع، ریسک مسدود شدن اکانت را بخوانید
+async with SelfBot(phone="0912...") as client:  # کد SMS را میپرسد
+    me = await client.get_me()
 ```
 
 **می‌تواند اکانت را مسدود کند.** این معامله است. در ماژول جدا نگه داشته شده

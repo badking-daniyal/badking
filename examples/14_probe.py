@@ -37,7 +37,7 @@ async def main() -> None:
     print(registry.describe("SendMessage"))
 
     # ---------- ۴. فراخوانی خام ----------
-    bot = SelfBot(session="badking.session", ack_risk=True)
+    bot = SelfBot(session="badking.session")
     await bot.connect()
 
     # متدی که در رجیستری نیست، با شماره فیلد خام
@@ -58,7 +58,7 @@ async def main() -> None:
     info = await bot.probe("GetUser")
     print(f"\nنتیجه probe: {info}")
 
-    await bot.disconnect()
+    await bot.close()
 
 
 if __name__ == "__main__":

@@ -113,7 +113,8 @@ def check_token() -> tuple[bool, str, str]:
     for var in ("BADKING_TOKEN", "BALE_TOKEN", "BOT_TOKEN", "TELEGRAM_BOT_TOKEN"):
         value = os.environ.get(var)
         if value:
-            masked = value[:8] + "…" + value[-4:] if len(value) > 14 else "…"
+            # فقط ۴ کاراکتر آخر — نمایش ابتدای توکن (شامل شناسه ربات) نشان ندهیم.
+            masked = "…" + value[-4:] if len(value) > 4 else "…"
             return True, f"{var}={masked}", ""
     return False, "پیدا نشد", "توکن را در .env بگذار: BADKING_TOKEN=123:ABC"
 

@@ -44,6 +44,16 @@ from .auth import AuthError, AuthFlow, DEFAULT_WS_URL, normalize_phone
 from .session import Session, SessionError, SessionStore
 from .transport import Transport
 
+
+def _safe_account_label(key: str) -> str:
+    """برچسب امن برای لاگ: کلیدهای حاوی شماره تلفن هش میشوند."""
+    if not isinstance(key, str):
+        return "<unknown>"
+    if key.startswith("phone:") or any(ch.isdigit() for ch in key.split(":", 1)[-1]):
+        digest = hashlib.sha256(key.encode("utf-8", "replace")).hexdigest()[:12]
+        return f"<redacted:{digest}>"
+    return key
+
 logger = logging.getLogger("badking.hybrid.sessions")
 
 
@@ -405,7 +415,8 @@ class SessionManager:
                 report.healthy += 1
 
             except Exception as exc:  # noqa: BLE001
-                logger.debug("اکانت %s خراب: %s", key, exc)
+                # کلید میتواند `phone:<شماره کامل>` باشد — هرگز آن را در لاگ ننویسیم.
+                logger.debug("اکانت %s خراب: %s", _safe_account_label(key), exc)
                 report.broken.append(key)
                 if remove_broken:
                     self.store.delete(key)

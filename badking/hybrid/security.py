@@ -229,19 +229,50 @@ DANGEROUS_RPCS = frozenset({
     "user.ResetContacts",
 })
 
+# نقشه کامل RPC → مجوز لازم. هر RPC موجود در این نقشه با policy خالی رد میشود.
+#
+# اصل: هر عملیاتی که وضعیت حساب/گروه/پیام را تغییر میدهد باید مجوز صریح
+# بخواهد. RPCهای فقطخواندنی (Load*) عمداً در نقشه نیستند تا خواندن پیشفرض
+# ممکن بماند — ولی RPCهای تغییردهنده نباید بدون مجوز اجرا شوند.
 _RPC_PERMISSION = {
+    # --- پیام ---
     "messaging.SendMessage": "send_messages",
     "messaging.UpdateMessage": "edit_messages",
     "messaging.DeleteMessage": "delete_messages",
+    "messaging.ForwardMessages": "send_messages",
+    "messaging.PinMessage": "manage_groups",
+    "messaging.UnPinMessages": "manage_groups",
+    "messaging.ClearChat": "delete_messages",
+    "messaging.MessageRead": "read_messages",
     "messaging.LoadHistory": "read_messages",
     "messaging.LoadDialogs": "read_messages",
+    "messaging.LoadPinnedMessages": "read_messages",
+    # --- فایل ---
     "files.GetNasimFileUploadUrl": "media_upload",
     "files.GetNasimFileUrl": "media_download",
+    # --- گروه ---
     "groups.CreateGroup": "manage_groups",
     "groups.KickUser": "manage_groups",
     "groups.LeaveGroup": "manage_groups",
+    "groups.JoinGroup": "manage_groups",
+    "groups.InviteUsers": "manage_groups",
+    "groups.GetGroupInviteURL": "manage_groups",
+    # --- مخاطبین و پروفایل ---
     "user.AddContact": "manage_contacts",
     "user.BlockUser": "manage_contacts",
+    "user.UnblockUser": "manage_contacts",
+    "user.EditName": "manage_contacts",
+    "user.EditAbout": "manage_contacts",
+    "user.EditNickName": "manage_contacts",
+    # --- واکنش‌ها و حضور ---
+    "abacus.MessageSetReaction": "send_messages",
+    "abacus.MessageRemoveReaction": "send_messages",
+    "presence.SetOnline": "send_messages",
+    "presence.Typing": "send_messages",
+    "presence.StopTyping": "send_messages",
+    # --- گزارش و محتوا ---
+    "report.ReportInappropriateContent": "send_messages",
+    "magazine.UpvotePost": "send_messages",
 }
 
 

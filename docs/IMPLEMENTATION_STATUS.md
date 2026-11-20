@@ -1,6 +1,6 @@
 # BADKING — وضعیت واقعی پیادهسازی
 
-**تاریخ بهروزرسانی:** 2026-11-20 (پس از Media Download در SelfBot)
+**تاریخ بهروزرسانی:** 2026-11-20 (پس از Beta Hardening — ممیزی مستقل)
 **نسخه:** 0.2.2
 **منبع:** سند مأموریت `D:\AI\edit.txt` (۳۵ بخش — در متن سند «۴۰» ذکر شده ولی ۳۵ بخش وجود دارد)
 
@@ -13,15 +13,41 @@
 
 | شاخص | مقدار واقعی |
 |---|---|
-| تستها | ۱۳۰۷ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
+| تستها | ۱۳۴۴ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
 | Exportها | ۱۹۰ |
 | پکیجها | ۳۴ |
 | نمونهها | ۲۸ |
 | RPCها | ۷۹ متد + ۶۵ اسکیمای پاسخ |
 | CI | سبز روی Python ۳.۹ / ۳.۱۰ / ۳.۱۱ / ۳.۱۲ |
 | سایت مستندات | زنده — docs.badking.ir |
-| آخرین commit | `82a9f20` (Media Download) |
+| آخرین commit | (در انتظار commit Beta Hardening) |
 | دانلود رسانه SelfBot | IMPLEMENTED + 31 تست Mock — رفتار سرور BLOCKED |
+| Beta Hardening (۲۰۲۶-۱۱-۲۰) | ۹ باگ واقعی رفع شد + ۳۷ Regression test — `tests/test_beta_hardening.py` |
+
+### نتایج ممیزی مستقل Beta (۲۰۲۶-۱۱-۲۰)
+
+سه ممیزی مستقل خواندند: (۱) Client/Bot API، (۲) امنیت، (۳) تست/مستندات/CI. یافتهها مستقیم از کد تأیید و اصلاح شدند:
+
+| باگ | شواهد | وضعیت |
+|---|---|---|
+| `get_pinned()` کلید `pins_data` را میخواند در حالی که پاسخ `data` دارد → همیشه `[]` | `schema.py:RESPONSES["LoadPinnedMessages"]` | FIXED |
+| `edit_message()` موفقیت را بر اساس فیلد nonexistent `message_id` تشخیص میداد | `schema.py:RESPONSES["UpdateMessage"]={"seq":1,"date":2}` | FIXED |
+| `stop_typing()` فیلد اجباری `typing_type` (field 2) را ارسال نمیکرد | `tests/fixtures/aiobale_methods/presence/stop_typing.py:28` | FIXED |
+| `set_online()` فیلد اجباری `timeout` (field 2) را ارسال نمیکرد | `tests/fixtures/aiobale_methods/presence/set_online.py:29` | FIXED |
+| `add_contact()` آرگومان `name` را نادیده میگرفت | `schema.py:METHODS["AddContact"]` | DOCUMENTED (پروتکل جای name ندارد) |
+| PermissionPolicy denylist بود، نه deny-by-default — RPCهای state-changing آزاد بودند | `security.py:check()` | FIXED — نقشه کامل ۳۲ RPC |
+| SSRF: URL سرور بدون اعتبارسنجی + `follow_redirects=True` | `client.py:download_file()` | FIXED — `validate_download_url` + ریدایرکت امن |
+| نامهای رزرو ویندوز (CON/NUL/COM1…) پاکسازی نمیشدند | `download.py:sanitize_filename()` | FIXED |
+| شماره تلفن کامل در DEBUG log (`sessions.py`) | `sessions.py:check_all()` | FIXED — هششده |
+| `doctor` ابتدای توکن را نمایش میداد | `cli/doctor.py:check_token()` | FIXED — فقط ۴ کاراکتر آخر |
+| مثالها و READMEها متدهای وجودنداشته (`ack_risk`, `disconnect`, `on_self_*`, `idle`, `login`) | `examples/11-14`, `docs/{en,fa}/README.md` | FIXED |
+| Secret scanner فقط فایلهای tracked را اسکن میکرد | `scripts/ci_secret_scan.py` | FIXED — untracked هم اسکن میشود |
+
+**BLOCKED (بدون حدس پروتکل):** Request Correlation (سرور req_id تأییدشده نمیدهد → `strict` پیشفرض)، Media Resume (فاقد شواهد Range)، JWT verification (کلید عمومی بله دردسترس نیست)، Live verification (حساب آزمایشی وجود ندارد).
+
+**تستها:** ۱۳۴۴ پاس + ۱ SKIP (Windows-only POSIX)، exit 0. امنیتی اجباری ۵۱ پاس، live ۵ SKIP. Secret scan ۴۰۲ فایل OK.
+
+**محدودیت CI:** `ruff` با `continue-on-error: true` اجرا میشود و محلاً قابل نصب نبود (شبکه)، بنابراین اجباری نشد. پوشش (coverage) report-only است، نه fail-under.
 
 ---
 

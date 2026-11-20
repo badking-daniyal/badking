@@ -155,13 +155,15 @@ convert. It does not guess.
 ## Self-bot / internal API
 
 This layer talks to Bale's internal protocol rather than the bot API. It is
-disabled by default and requires an explicit acknowledgement:
+isolated in its own module so the rest of the framework does not depend on it.
+Pass a phone number for interactive login, or load a saved session:
 
 ```python
-from badking import SelfBot
+from badking import SelfBot, hybrid_warning
 
-client = SelfBot(ack_risk=True)
-await client.login(phone="0912...")
+print(hybrid_warning())  # read the account-ban risk before starting
+async with SelfBot(phone="0912...") as client:  # prompts for the SMS code
+    me = await client.get_me()
 ```
 
 **It can get the account banned.** That is the trade. It is isolated in its own
