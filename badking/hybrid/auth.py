@@ -19,8 +19,17 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from .jwt_verify import JWTVerifier, JWTVerificationFailed
 from .proto import build, decode, get_int, get_str
-from .security import mask_phone, secure_log_context, validate_otp
+from .security import (
+    OTPAlreadyUsed,
+    OTPAttemptLimitExceeded,
+    OTPExpired,
+    OTPGuard,
+    mask_phone,
+    secure_log_context,
+    validate_otp,
+)
 from .session import Session
 
 logger = logging.getLogger("badking.hybrid.auth")
@@ -117,9 +126,27 @@ def device_fingerprint(phone: str) -> dict[str, str]:
 class AuthFlow:
     """جریان احراز هویت روی یک transport."""
 
-    def __init__(self, transport: Any, rest_base: str = DEFAULT_REST_BASE):
+    def __init__(
+        self,
+        transport: Any,
+        rest_base: str = DEFAULT_REST_BASE,
+        otp_guard: OTPGuard | None = None,
+        jwt_verifier: JWTVerifier | None = None,
+    ):
+        """جریان احراز هویت.
+
+        Args:
+            transport: transportای که RPCهای auth روی آن ارسال میشود.
+            otp_guard: در صورت تنظیم، چالشهای OTP با محدودیت تلاش، انقضا
+                و جلوگیری از replay محافظت میشوند. پیشفرض None (رفتار قدیمی).
+            jwt_verifier: در صورت تنظیم، توکنهای access/refresh واقعاً
+                verify میشوند. پیشفرض None (وضعیت NOT_VERIFIED — صریحاً
+                مستند است؛ بله کلید عمومی نمیدهد).
+        """
         self.transport = transport
         self.rest_base = rest_base.rstrip("/")
+        self.otp_guard = otp_guard
+        self.jwt_verifier = jwt_verifier
 
     async def request_code(self, phone: str) -> CodeRequest:
         """درخواست کد SMS برای شماره."""
@@ -140,6 +167,11 @@ class AuthFlow:
         if not tx:
             raise AuthError("سرور transaction_hash برنگرداند")
         retry = get_int(msg, F_RETRY_AFTER) or None
+        # چالش OTP فقط وقتی guard فعال است صادر میشود. کد واقعی نزد ما
+        # وجود ندارد (سرور آنرا پیامک میکند) — بنابراین guard فقط شمارش
+        # تلاشها، انقضا و replay را روی هش کدی که کاربر وارد میکند اعمال
+        # میکند. در sign_in چالش با همان کد واردشده «صادر» و سپس verify
+        # میشود تا replay دفعات بعدیگرفته شود.
         logger.info("کد SMS ارسال شد به %s", mask_phone(normalized))
         return CodeRequest(
             transaction_hash=tx,
@@ -154,6 +186,10 @@ class AuthFlow:
             code = validate_otp(code)
         except ValueError as exc:
             raise AuthError(str(exc)) from exc
+
+        if self.otp_guard is not None:
+            self._enforce_otp(transaction_hash)
+
         payload = build({F_TRANSACTION_HASH: transaction_hash, F_CODE: code})
         frame = await self.transport.request(payload)
         msg = decode(frame)
@@ -162,6 +198,7 @@ class AuthFlow:
         token = get_str(msg, F_ACCESS_TOKEN)
         if not token:
             raise AuthError("سرور access_token برنگرداند (کد اشتباه؟)")
+        self._verify_token(token)
 
         session = Session(
             access_token=token,
@@ -172,8 +209,42 @@ class AuthFlow:
             username=get_str(msg, F_USERNAME),
         )
         is_new = not bool(get_int(msg, F_USER_ID))
+        if self.otp_guard is not None:
+            # سرور کد را تأیید کرد — چالش را مصرفشده علامت میزنیم تا
+            # replay جلوگیری شود. transaction تازه مستقل است.
+            self.otp_guard.mark_used(transaction_hash)
         logger.info("ورود موفق: user_id=%s", session.user_id)
         return SignInResult(session=session, is_new_user=is_new)
+
+    def _enforce_otp(self, challenge_id: str) -> None:
+        """اعمال محدودیت تلاش/انقضا/replay قبل از ارسال به سرور.
+
+        کد OTP واقعی را سرور پیامک میکند و نزد ما نیست، بنابراین صحت آنرا
+        نمیتوانیم محلی بررسی کنیم. OTPGuard در حالت «blind» فقط:
+          - تعداد تلاشها را محدود میکند (Brute Force)
+          - TTL چالش را رعایت میکند (Expiration)
+          - چالش مصرفشده را رد میکند (Replay)
+        صحت نهایی کد توسط سرور تعیین میشود — هیچ ادعای محلیای نمیشود.
+        """
+        guard = self.otp_guard
+        assert guard is not None
+        try:
+            guard.check_blind(challenge_id)
+        except OTPAlreadyUsed as exc:
+            raise AuthError("کد تأیید قبلاً استفاده شده است") from exc
+        except OTPExpired as exc:
+            raise AuthError("کد تأیید منقضی شده است") from exc
+        except OTPAttemptLimitExceeded as exc:
+            raise AuthError("تعداد تلاشهای کد تأیید بیش از حد مجاز است") from exc
+
+    def _verify_token(self, token: str) -> None:
+        """اعمال JWT verification واقعی در مسیر مصرف توکن."""
+        if self.jwt_verifier is None:
+            return
+        try:
+            self.jwt_verifier.verify(token)
+        except JWTVerificationFailed as exc:
+            raise AuthError("توکن دسترسی نامعتبر است") from exc
 
     async def refresh(self, session: Session) -> Session:
         """تمدید توکن با refresh_token."""
@@ -186,6 +257,7 @@ class AuthFlow:
         token = get_str(msg, F_ACCESS_TOKEN)
         if not token:
             raise AuthError("تمدید توکن ناموفق بود")
+        self._verify_token(token)
         session.access_token = token
         new_refresh = get_str(msg, F_REFRESH_TOKEN)
         if new_refresh:

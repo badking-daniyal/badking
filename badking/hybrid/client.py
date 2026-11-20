@@ -155,6 +155,8 @@ class SelfBot:
         transport_factory: Callable[[], Transport] | None = None,
         permissions: PermissionPolicy | None = None,
         legacy_unrestricted: bool = False,
+        jwt_verifier: Any | None = None,
+        otp_guard: Any | None = None,
     ):
         import warnings
         from .security import InsecureLegacyModeWarning, PermissionPolicy
@@ -184,6 +186,10 @@ class SelfBot:
         else:
             self.permissions = PermissionPolicy()
             self.legacy_unrestricted = False
+        # JWT verification و OTPGuard — اختیاری و صریح. وقتی تنظیم شوند،
+        # توکن واقعاً در مسیر مصرف بررسی میشود (نه فقط وجود کلاس).
+        self.jwt_verifier = jwt_verifier
+        self.otp_guard = otp_guard
         self._phone = phone
         self._store: SessionStore | None = None
         self._session: Session | None = None
@@ -218,6 +224,15 @@ class SelfBot:
             await self._do_login()
 
         assert self._session is not None
+        # JWT verification واقعی در مسیر مصرف توکن. بدون verifier وضعیت
+        # NOT_VERIFIED است (بله کلید عمومی نمیدهد) — صریحاً مستند است.
+        if self.jwt_verifier is not None:
+            from .jwt_verify import JWTVerificationFailed
+
+            try:
+                self.jwt_verifier.verify(self._session.access_token)
+            except JWTVerificationFailed as exc:
+                raise SelfBotError("توکن session نامعتبر است") from exc
         make_transport = self.transport_factory or (
             lambda: Transport(
                 self.ws_url,
@@ -253,7 +268,11 @@ class SelfBot:
         transport = Transport(self.ws_url, framing=self.framing, timeout=self.timeout)
         await transport.connect()
         try:
-            flow = AuthFlow(transport)
+            flow = AuthFlow(
+                transport,
+                otp_guard=self.otp_guard,
+                jwt_verifier=self.jwt_verifier,
+            )
             req = await flow.request_code(self._phone)
             code = await asyncio.get_event_loop().run_in_executor(
                 None, input, "کد تأیید SMS: "

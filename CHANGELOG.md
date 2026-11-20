@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### Security Completion Phase (2026-11-20)
+- **JWT Verification واقعی** با PyJWT — الگوریتم محدود، جلوگیری از Algorithm Confusion، رد none/malformed/expired/nbf/iss/aud، خطاهای امن بدون نشت توکن
+- `OTPGuard` حالا در `AuthFlow` و `SelfBot.connect` استفاده میشود (حالت blind: تلاش/انقضا/replay؛ صحت کد توسط سرور)
+- JWT verification در مسیر مصرف توکن (`sign_in`, `refresh`, `connect`) وصل شد
+- وابستگی `PyJWT>=2.8,<3` به extras `hybrid` / `all`
+- ۴۲ تست امنیتی جدید — **۱۲۲۵ پاس + ۵ live SKIP**
+- نسخه 0.2.2 بدون تغییر، PyPI منتشر نشد
+
 ### FINAL Security & Engineering Validation (2026-11-20)
 - **Critical:** تناقض `permissions=None` رفع شد — پیشفرض Deny by Default، Legacy فقط با `legacy_unrestricted=True` + هشدار
 - `OTPGuard` اضافه شد: محدودیت تلاش، انقضا، جلوگیری از replay (کد هش میشود)
@@ -16,7 +24,7 @@
 - Migration: باگ import خیالی (`from badking import Command`) رفع شد — API خیالی ساخته نمیشود
 - Benchmark نهایی: median/P95/stddev، ۴ اندازه ورودی، مقایسه با aiobale
 - ۶ گزارش نهایی + تستهای مربوطه
-- **تستها:** ۱۱۸۳ پاس + ۵ live SKIP. PyPI منتشر نشد، نسخه 0.2.2 بدون تغییر
+- **تستها:** ۱۲۲۵ پاس + ۵ live SKIP. PyPI منتشر نشد، نسخه 0.2.2 بدون تغییر
 
 ### Planned
 - انتشار روی PyPI

@@ -23,7 +23,7 @@
 
 | حوزه | تعداد تست | منبع |
 |---|---:|---|
-| کل مخزن | **۱۱۸۳ passed**، ۵ live deselected | `pytest -m "not live"` |
+| کل مخزن | **۱۲۲۵ passed**، ۵ live deselected | `pytest -m "not live"` |
 | Secret audit | ۹ | `test_secret_audit.py` |
 | Access control | ۹ | `test_access_control_audit.py` |
 | OTP security | ۸ | `test_otp_security.py` |
@@ -75,7 +75,7 @@
 
 | مورد | وضعیت |
 |---|---|
-| تستها | ✅ ۱۱۸۳ پاس، exit 0 |
+| تستها | ✅ ۱۲۲۵ پاس، exit 0 |
 | CI | ✅ stepهای اجباری اضافه شد |
 | PyPI | ⛔ منتشر نشد |
 | Version | ⛔ 0.2.2 بدون تغییر |

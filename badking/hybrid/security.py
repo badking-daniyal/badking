@@ -107,6 +107,44 @@ class OTPGuard:
     def clear(self, challenge_id: str) -> None:
         self._challenges.pop(challenge_id, None)
 
+    # ---------- حالت Blind (برای AuthFlow واقعی) ----------
+    # کد OTP واقعی را سرور پیامک میکند و نزد ما نیست. بنابراین نمیتوانیم
+    # صحت آنرا با hash مقایسه کنیم. در مسیر احراز هویت واقعی فقط از
+    # شمارش تلاش، انقضا و جلوگیری replay استفاده میکنیم.
+
+    def issue_blind(self, challenge_id: str, now: float | None = None) -> None:
+        """ایجاد چالش بدون کد — فقط timestamp و شمارش تلاش."""
+        now = now if now is not None else time.time()
+        self._challenges[challenge_id] = OTPChallenge(
+            code_hash="",  # کد نزد ما نیست
+            created_at=now,
+        )
+
+    def check_blind(self, challenge_id: str, now: float | None = None) -> None:
+        """بررسی تلاش/انقضا/replay قبل از ارسال به سرور.
+
+        بر خلاف ``verify``، کد را مقایسه نمیکند — صحت کد توسط سرور تعیین
+        میشود. فقط محدودیتها را اعمال میکند.
+        """
+        now = now if now is not None else time.time()
+        ch = self._challenges.get(challenge_id)
+        if ch is None:
+            self.issue_blind(challenge_id, now=now)
+            ch = self._challenges[challenge_id]
+        if ch.used:
+            raise OTPAlreadyUsed("کد قبلاً استفاده شده است")
+        if now - ch.created_at > self.ttl_seconds:
+            raise OTPExpired("کد منقضی شده است")
+        if ch.attempts >= self.max_attempts:
+            raise OTPAttemptLimitExceeded("تعداد تلاشها بیش از حد مجاز است")
+        ch.attempts += 1
+
+    def mark_used(self, challenge_id: str) -> None:
+        """پس از تأیید موفق توسط سرور، چالش را مصرفشده علامت میزند."""
+        ch = self._challenges.get(challenge_id)
+        if ch is not None:
+            ch.used = True
+
 
 # ---------- Secure logging ----------
 
