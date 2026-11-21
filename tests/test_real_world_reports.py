@@ -54,4 +54,4 @@ def test_security_report_has_statuses():
 
 def test_status_has_current_count():
     text = (DOCS / "IMPLEMENTATION_STATUS.md").read_text(encoding="utf-8")
-    assert "۱۳۶۶" in text
+    assert "۱۴۱۸" in text

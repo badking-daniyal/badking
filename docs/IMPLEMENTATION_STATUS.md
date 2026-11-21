@@ -13,7 +13,7 @@
 
 | شاخص | مقدار واقعی |
 |---|---|
-| تستها | ۱۳۶۶ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
+| تستها | ۱۴۱۸ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
 | Exportها | ۱۹۰ |
 | پکیجها | ۳۴ |
 | نمونهها | ۲۸ |
@@ -26,6 +26,7 @@
 | SelfBot Inline Keyboard (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED (source-confirmed) + ۱۲ تست — `docs/SELF_INLINE_KEYBOARD.md`؛ callback query BLOCKED (پروتکل داخلی فاقد آن است) |
 | Slow HTTP Trickle (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED + ۴ تست — `total_timeout` در دانلود؛ DNS Rebinding BLOCKED |
 | Bot API Multipart Upload (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED + ۶ تست — ارسال فایل محلی با `multipart/form-data` طبق مستندات رسمی |
+| Client API Correctness (۲۰۲۶-۱۱-۲۱) | ۵۱ تست مستقل — pagination/page-boundary، message/dialog parsing، response schema؛ ۵ باگ واقعی رفع شد — `tests/test_client_api_correctness.py` |
 
 ### نتایج ممیزی مستقل Beta (۲۰۲۶-۱۱-۲۰)
 

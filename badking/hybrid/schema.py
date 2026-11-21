@@ -25,7 +25,14 @@ NESTED: dict[str, dict[str, object]] = {
     "MessageCaption": {"content": 1, "mentions": 2, "ext": 3},
     "Thumbnail": {"w": 1, "h": 2, "image": 3},
     "DocumentMessage": {"fileId": 1, "accessHash": 2, "size": 3, "name": 4, "mimeType": 5, "thumb": {"field": 6, "fields": "Thumbnail"}, "ext": 7, "caption": {"field": 8, "fields": "MessageCaption"}},
-    "MessageContent": {"document": {"field": 4, "fields": "DocumentMessage"}, "empty": 5, "serviceMessage": 11, "botMessage": {"field": 13, "fields": "TemplateMessage"}, "text": {"field": 15, "fields": {'value': 1}}, "gift": {"field": 17, "fields": "GiftPacket"}},
+    "MessageContent": {"document": {"field": 4, "fields": "DocumentMessage"}, "empty": 5, "serviceMessage": {"field": 11, "fields": "ServiceMessage"}, "botMessage": {"field": 13, "fields": "TemplateMessage"}, "text": {"field": 15, "fields": {'value': 1}}, "gift": {"field": 17, "fields": "GiftPacket"}},
+    # ServiceMessage{1: text, 2: ext} — aiobale 0.3.9 types/service_message.py
+    "ServiceMessage": {"text": 1, "ext": {"field": 2, "fields": "ServiceExt"}},
+    # ServiceExt{18: giftOpened} — aiobale 0.3.9 types/service_ext.py
+    "ServiceExt": {"giftOpened": {"field": 18, "fields": "GiftOpened"}},
+    "GiftOpened": {"userId": 1, "othersCount": 2, "messageId": 3, "messageDate": 4},
+    # GiftPacket — aiobale 0.3.9 types/gift_packet.py
+    "GiftPacket": {"count": 1, "totalAmount": 2, "givingType": 3, "token": {"field": 4, "fields": "StringValue"}, "message": {"field": 5, "fields": "StringValue"}, "ownerId": 6, "showAmounts": {"field": 7, "fields": "BoolValue"}},
     "TemplateMessage": {"message": {"field": 1, "fields": "MessageContent"}, "tempId": 2, "inlineKeyboardMarkup": {"field": 5, "fields": "InlineKeyboard"}},
     # ساختار تأییدشده از aiobale 0.3.9 types/inline_keyboard.py:
     #   InlineKeyboardMarkup{1: [Row{1: [Button]}]}
@@ -37,8 +44,8 @@ NESTED: dict[str, dict[str, object]] = {
     "OtherMessage": {"date": 1, "messageId": 2, "seq": 3},
     "InfoMessage": {"peer": {"field": 1, "fields": "Peer"}, "messageId": 2, "date": 3},
     "QuotedMessage": {"messageId": 1, "senderId": 3, "date": 4, "content": {"field": 5, "fields": "MessageContent"}, "peer": {"field": 6, "fields": "Peer"}},
-    "MessageData": {"senderId": 1, "messageId": 2, "date": 3, "content": {"field": 4, "fields": "MessageContent"}, "repliedTo": 8, "previousMessage": 10, "nextMessage": 11, "editedAt": 12},
-    "PeerData": {"peer": {"field": 1, "fields": "Peer"}, "unreadCount": 2, "sortDate": 3, "senderId": 4, "messageId": 5, "date": 6, "content": {"field": 7, "fields": "MessageContent"}, "firstUnreadMessage": 9, "unreadMentions": 13},
+    "MessageData": {"senderId": 1, "messageId": 2, "date": 3, "content": {"field": 4, "fields": "MessageContent"}, "repliedTo": {"field": 8, "fields": "QuotedMessage"}, "previousMessage": {"field": 10, "fields": "MessageData"}, "nextMessage": {"field": 11, "fields": "MessageData"}, "editedAt": 12},
+    "PeerData": {"peer": {"field": 1, "fields": "Peer"}, "unreadCount": 2, "sortDate": 3, "senderId": 4, "messageId": 5, "date": 6, "content": {"field": 7, "fields": "MessageContent"}, "firstUnreadMessage": {"field": 9, "fields": "MessageData"}, "unreadMentions": 13},
     "User": {"id": 1, "accessHash": 2, "name": 3, "localName": 4, "sex": 5, "isBot": 7, "username": 9, "isDeleted": 16, "createdAt": 19},
     "Group": {"id": 1, "accessHash": 2, "title": 3, "isMember": 5, "isHidden": 12, "groupType": 15, "canSendMessage": 16, "username": 17, "isOrphaned": 18, "membersCount": 20, "permissions": {"field": 30, "fields": "Permissions"}, "defaultPermissions": {"field": 31, "fields": "Permissions"}, "ownerId": 32, "availableReactions": 33, "isSuspend": 36, "restriction": 40},
     "Member": {"id": 1, "inviterId": 2, "date": 3, "isAdmin": 4, "promotedBy": 5, "promotedAt": 6},
@@ -51,7 +58,8 @@ NESTED: dict[str, dict[str, object]] = {
     # (IntValue(value=1) پیشفرض). فیلد 3 اختیاری است و در درخواست ارسال نمیشود.
     "FileInfo": {"fileId": 1, "accessHash": 2, "fileStorageVersion": {"field": 3, "fields": "IntValue"}},
     "FileUploadInfo": {"fileId": 1, "url": 2, "chunkSize": 4},
-    "GiftPacket": {"count": 1, "totalAmount": 2, "givingType": 3, "token": 4, "message": 5, "ownerId": 6, "showAmounts": 7},
+    # GiftPacket در بالا (خط ~35) با ساختار کامل تعریف شده است:
+    # token/message از نوع StringValue و showAmounts از نوع BoolValue.
     "BanData": {"bannedId": 1, "bannerId": 2},
     "InfoPeer": {"id": 1, "type": 2},
     "ContactRequest": {"phoneNumber": 1, "name": 2},

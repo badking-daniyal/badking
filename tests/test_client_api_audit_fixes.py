@@ -122,5 +122,7 @@ async def test_iter_dialogs_stops_on_repeated_cursor():
     bot.call = fake_call
     dialogs = [d async for d in bot.iter_dialogs(limit=None, batch=1)]
     # First page yields 1; second page sees repeated cursor and stops.
-    assert len(dialogs) == 2
+    # The repeated page carries the SAME peer, so it is filtered as a
+    # duplicate: the caller must not see the same dialog twice.
+    assert len(dialogs) == 1
     assert len(calls) == 2

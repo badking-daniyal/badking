@@ -103,8 +103,37 @@ class Message:
     date: float = 0.0
     peer: Peer | None = None
     is_out: bool = False
+    content_type: str = "unknown"
+    replied_to: dict[str, Any] | None = None
+    edited_at: float | None = None
     raw: dict[str, Any] = field(default_factory=dict)
     _client: Any = None
+
+    @property
+    def is_edited(self) -> bool:
+        """آیا پیام ویرایش شده است؟"""
+        return self.edited_at is not None
+
+    @property
+    def is_service(self) -> bool:
+        """آیا پیام سرویس (عضویت/خروج/گیفت) است؟"""
+        return self.content_type == "service"
+
+    @property
+    def is_forwarded(self) -> bool:
+        """آیا پیام به‌صورت خالی/فورواردشده علامت خورده است؟"""
+        return self.content_type == "empty"
+
+    @property
+    def reply_to_id(self) -> int | None:
+        """شناسه پیامی که این پیام به آن پاسخ داده (در صورت وجود)."""
+        if not isinstance(self.replied_to, dict):
+            return None
+        value = self.replied_to.get("messageId", self.replied_to.get("message_id"))
+        try:
+            return int(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
 
     async def reply(self, text: str) -> "Message":
         if self._client is None or self.peer is None:
@@ -1238,6 +1267,7 @@ class SelfBot:
         seen: set[int] = set()
         fetched = 0
         date_cursor = -1
+        anon_counter = 0
         while True:
             want = batch if limit is None else min(batch, limit - fetched)
             if want <= 0:
@@ -1258,45 +1288,81 @@ class SelfBot:
             page: list[Message] = []
             for raw in raw_messages:
                 msg = self._parse_message(raw, peer)
-                if msg.id in seen:
+                # شناسه صفر یعنی پیام قابل‌شناسایی نبوده؛ آن را با یک
+                # کلید یکتای موقتی علامت میزنیم تا بهاشتباه تکراری حذف
+                # نشود. شمارنده سراسری است تا کلیدها تکراری نشوند.
+                if msg.id:
+                    key = msg.id
+                else:
+                    anon_counter -= 1
+                    key = anon_counter
+                if key in seen:
                     continue
-                seen.add(msg.id)
+                seen.add(key)
                 page.append(msg)
 
             if reverse:
                 page.reverse()
-            for msg in page:
+            # سرور ممکن است بیش از limit ردیف برگرداند؛ نباید از سقف
+            # درخواست عبور کنیم.
+            for msg in page[:want] if want < len(page) else page:
                 yield msg
                 fetched += 1
                 if limit is not None and fetched >= limit:
                     return
-
-            # ادامه تا وقتی پیام تازه بیاید؛ اگر صفحه خالی یا بدون
-            # پیشرفت در تاریخ بود، تمام است.
-            oldest = min((m.date for m in page), default=None)
-            if oldest is None or int(oldest) == int(date_cursor):
+            # مکان‌نمای بعدی باید از «قدیمی‌ترین پیامِ همین صفحه» بیاید.
+            # اگر صفحه پس از حذف تکراری‌ها خالی شد ولی پاسخ خام داده داشت،
+            # از تاریخ‌های خام استفاده میکنیم تا پیمایش زودهنگام قطع نشود.
+            oldest = min((m.date for m in page if m.date), default=None)
+            if oldest is None:
+                raw_dates = [
+                    float(r.get("date", 0) or 0)
+                    for r in raw_messages
+                    if isinstance(r, dict) and r.get("date")
+                ]
+                oldest = min(raw_dates) if raw_dates else None
+            if oldest is None:
                 return
-            date_cursor = int(oldest)
+            # اگر مکان‌نما پیشرفت نکرد ولی سرور هنوز داده برمیگرداند،
+            # یک واحد جلو میرویم تا از چرخهٔ بی‌پایان جلوگیری شود.
+            new_cursor = int(oldest)
+            if new_cursor == int(date_cursor):
+                new_cursor = int(date_cursor) - 1
+            date_cursor = new_cursor
 
     def _parse_message(self, raw: Any, peer: Peer) -> Message:
         """تبدیل MessageData خام به Message.
 
-        MessageData{1: senderId, 2: messageId, 3: date, 4: content, 12: editedAt}
-        content = MessageContent{15: TextMessage{1: value}}
+        MessageData{1: senderId, 2: messageId, 3: date, 4: content,
+                    8: repliedTo, 10: previousMessage, 11: nextMessage,
+                    12: editedAt}
+
+        MessageContent (aiobale 0.3.9، types/message_content.py):
+            4  document      → DocumentMessage
+            5  empty         → پیام خالی / فوروارد
+            11 serviceMessage→ ServiceMessage{1: text, 2: ext}
+            13 botMessage    → TemplateMessage{1: message, 2: tempId, 5: markup}
+            15 text          → TextMessage{1: value}
+            17 gift          → GiftPacket
+
+        هیچ نوع محتوایی دور ریخته نمیشود؛ هرچه هست در ``raw`` باقی میماند
+        و ``text`` بهترین متن قابل‌استخراج را میگیرد.
         """
         if not isinstance(raw, dict):
             return Message(id=0, peer=peer, _client=self)
 
-        text = ""
         content = raw.get("content")
-        if isinstance(content, dict):
-            text_node = content.get("text")
-            if isinstance(text_node, dict):
-                text = str(text_node.get("value", "") or "")
-            elif isinstance(text_node, bytes):
-                text = text_node.decode("utf-8", "replace")
-            elif isinstance(text_node, str):
-                text = text_node
+        content = content if isinstance(content, dict) else {}
+        text = self._extract_text(content)
+
+        replied_to = raw.get("repliedTo")
+        replied_to = replied_to if isinstance(replied_to, dict) else None
+
+        edited_at = raw.get("editedAt")
+        try:
+            edited_at_val = float(edited_at) if edited_at is not None else None
+        except (TypeError, ValueError):
+            edited_at_val = None
 
         return Message(
             id=int(raw.get("messageId", 0) or 0),
@@ -1306,9 +1372,101 @@ class SelfBot:
             date=float(raw.get("date", 0) or 0),
             peer=peer,
             is_out=int(raw.get("senderId", 0) or 0) == int(self._my_id or 0),
+            content_type=self._content_type(content),
+            replied_to=replied_to,
+            edited_at=edited_at_val,
             raw=raw,
             _client=self,
         )
+
+    @staticmethod
+    def _content_type(content: dict[str, Any]) -> str:
+        """نوع محتوای پیام، براساس فیلد حاضر در MessageContent.
+
+        مقدارها: ``text``، ``document``، ``service``، ``bot``، ``gift``،
+        ``empty``، ``unknown``.
+        """
+        if not isinstance(content, dict):
+            return "unknown"
+        if content.get("text") is not None:
+            return "text"
+        if content.get("document") is not None:
+            return "document"
+        if content.get("serviceMessage") is not None:
+            return "service"
+        if content.get("botMessage") is not None:
+            return "bot"
+        if content.get("gift") is not None:
+            return "gift"
+        if content.get("empty"):
+            return "empty"
+        return "unknown"
+
+    @staticmethod
+    def _extract_text(content: dict[str, Any]) -> str:
+        """بهترین متن قابل‌استخراج از MessageContent.
+
+        ترتیب اولویت براساس ساختار واقعی: متن مستقیم، کپشن سند، متن
+        سرویس، متن ربات (TemplateMessage)، پیام گیفت.
+        """
+        if not isinstance(content, dict):
+            return ""
+
+        node = content.get("text")
+        value = SelfBot._node_text(node)
+        if value:
+            return value
+
+        doc = content.get("document")
+        if isinstance(doc, dict):
+            caption = doc.get("caption")
+            if isinstance(caption, dict):
+                value = SelfBot._node_text(caption.get("content"))
+                if value:
+                    return value
+            value = SelfBot._node_text(doc.get("name"))
+            if value:
+                return value
+
+        service = content.get("serviceMessage")
+        if isinstance(service, dict):
+            value = SelfBot._node_text(service.get("text"))
+            if value:
+                return value
+
+        bot = content.get("botMessage")
+        if isinstance(bot, dict):
+            inner = bot.get("message")
+            if isinstance(inner, dict):
+                value = SelfBot._extract_text(inner)
+                if value:
+                    return value
+
+        gift = content.get("gift")
+        if isinstance(gift, dict):
+            value = SelfBot._node_text(gift.get("message"))
+            if value:
+                return value
+
+        return ""
+
+    @staticmethod
+    def _node_text(node: Any) -> str:
+        """خواندن متن از یک گره که ممکن است dict/bytes/str باشد.
+
+        ``StringValue{1: value}`` → ``{"value": ...}`` یا ``{"1": ...}``.
+        """
+        if node is None:
+            return ""
+        if isinstance(node, bytes):
+            return node.decode("utf-8", "replace")
+        if isinstance(node, str):
+            return node
+        if isinstance(node, dict):
+            for key in ("value", "1"):
+                if key in node:
+                    return SelfBot._node_text(node[key])
+        return ""
 
     # ---------- گفتگوها ----------
     async def get_dialogs(self, limit: int = 100) -> list[Dialog]:
@@ -1325,6 +1483,7 @@ class SelfBot:
         # cursor را از sortDate آخرین گفتگو میگیریم (schema: PeerData.field 3).
         offset_date = 0
         seen_cursors: set[int] = set()
+        seen_peers: set[tuple[int, int]] = set()
         fetched = 0
         while True:
             want = batch if limit is None else min(batch, limit - fetched)
@@ -1339,13 +1498,20 @@ class SelfBot:
             if not isinstance(rows, list):
                 rows = [rows]
             for row in rows:
-                yield self._parse_dialog(row)
+                dialog = self._parse_dialog(row)
+                # کلید یکتای گفتگو: (نوع, شناسه). گفتگوی تکراری بین
+                # صفحات یکبار تحویل داده میشود.
+                key = (str(dialog.peer.type or ""), int(dialog.peer.id or 0))
+                if key in seen_peers:
+                    continue
+                seen_peers.add(key)
+                yield dialog
                 fetched += 1
                 if limit is not None and fetched >= limit:
                     return
-            if len(rows) < want:
-                return
-            # جلوگیری از چرخه: اگر سرور همان cursor را برگرداند، متوقف شو.
+            # مکان‌نمای بعدی از sortDate آخرین ردیف خام گرفته میشود
+            # (schema: PeerData.field 3). اگر سرور cursor تکراری بدهد،
+            # یعنی به انتهای فهرست رسیده‌ایم.
             last = rows[-1]
             raw_cursor = (
                 last.get("sortDate") or last.get("date") or 0
@@ -1364,29 +1530,27 @@ class SelfBot:
     def _parse_dialog(self, raw: Any) -> Dialog:
         """تبدیل PeerData به Dialog.
 
-        PeerData{1: peer, 2: unreadCount, 3: sortDate, 6: date, 7: content}
+        PeerData{1: peer, 2: unreadCount, 3: sortDate, 4: senderId,
+                 5: messageId, 6: date, 7: content, 9: firstUnreadMessage,
+                 13: unreadMentions}
         """
         if not isinstance(raw, dict):
             return Dialog(peer=Peer(id=0))
 
         peer_raw = raw.get("peer") or {}
-        ptype = int(peer_raw.get("type", 2) or 2) if isinstance(peer_raw, dict) else 2
+        if not isinstance(peer_raw, dict):
+            peer_raw = {}
+        ptype = int(peer_raw.get("type", 2) or 2)
         peer = Peer(
-            id=int(peer_raw.get("id", 0) or 0) if isinstance(peer_raw, dict) else 0,
+            id=int(peer_raw.get("id", 0) or 0),
             type=_peer_type_name(ptype),
-            access_hash=(
-                int(peer_raw.get("accessHash", 0) or 0)
-                if isinstance(peer_raw, dict)
-                else 0
-            ),
+            access_hash=int(peer_raw.get("accessHash", 0) or 0),
+            title=str(peer_raw.get("title", "") or ""),
+            username=str(peer_raw.get("username", "") or ""),
         )
 
-        last_text = ""
         content = raw.get("content")
-        if isinstance(content, dict):
-            node = content.get("text")
-            if isinstance(node, dict):
-                last_text = str(node.get("value", "") or "")
+        last_text = self._extract_text(content if isinstance(content, dict) else {})
 
         return Dialog(
             peer=peer,

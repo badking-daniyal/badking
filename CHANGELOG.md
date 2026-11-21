@@ -9,6 +9,18 @@
 
 ## [Unreleased]
 
+### Client API Correctness & Protocol Audit (2026-11-21)
+- رفع ۵ باگ واقعی در `iter_messages`/`iter_dialogs` و Message Parsing:
+  - صفحه کاملاً تکراری دیگر پیمایش را زود متوقف نمیکند (cursor با پیشرفت ایمن جلو میرود).
+  - پیام با `messageId=0` بهاشتباه تکراری تلقی نمیشد (شمارنده یکتای سراسری).
+  - `limit` حتی اگر سرور بیشتر از تعداد درخواستی برگرداند رعایت میشود.
+  - دیالوگ تکراری بین صفحات فیلتر میشود؛ کلید یکتا `(peer.type, peer.id)` است.
+  - `_parse_message` حالا تمام انواع محتوا (text/document/service/bot/gift/empty) و `repliedTo`/`editedAt` را میخواند؛ متن سند/سرویس/ربات/گیفت گم نمیشد.
+  - `_parse_dialog` عنوان، username و آخرین پیام سند را میخواند.
+- اصلاح schema: تعریف تکراری `GiftPacket` (scalar) حذف شد؛ `ServiceMessage`، `ServiceExt`، `GiftOpened`، wrapperهای `StringValue`/`BoolValue` و ساختار `repliedTo`/`previousMessage`/`nextMessage` طبق aiobale 0.3.9 اضافه شدند (منبع مقایسه، نه اثبات پروتکل رسمی).
+- ۵۱ تست مستقل آفلاین (`tests/test_client_api_correctness.py`) شامل pagination چندصفحهای، مرز صفحات، پاسخ ناقص/خراب، تکرار، cancellation، timeout، parsing و round-trip باینری. تست معیوب cancellation که بیانتها گیر میکرد اصلاح شد (ref اضافه + `asyncio.wait_for`).
+- تستها: ۱۴۱۸ پاس + ۶ SKIP.
+
 ### Bot API Multipart File Upload (2026-11-21)
 - `send_photo`/`send_document`/`send_audio`/`send_video`/`send_voice`/`send_animation` حالا مسیر فایل محلی را میپذیرند و طبق مستندات رسمی بله درخواست `multipart/form-data` میفرستند. file_id و URL همچنان JSON میمانند (رفتار قبلی حفظ شد).
 - باگ: در حالت multipart، `reply_markup` و سایر اشیاء JSON بهصورت `str(dict)` ارسال میشدند (فرمت پایتونی، نه JSON). حالا با `json.dumps` سریالایز میشوند.
