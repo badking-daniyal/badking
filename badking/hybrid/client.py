@@ -921,12 +921,30 @@ class SelfBot:
         # جلوگیری از SSRF: URL سرور و هر ریدایرکت باید دوباره اعتبارسنجی شود.
         validate_download_url(info["url"])
 
+        # IP Pinning: هر مرحله (درخواست اول و هر ریدایرکت) دقیقاً به IP
+        # تأییدشده وصل میشود تا DNS rebinding بین validate و connect بیاثر شود.
+        # hostname اصلی در Origin میماند → Host/SNI و اعتبارسنجی گواهی حفظ میشود.
+        from .ssrf import build_pinned_transport
+
+        def _client_for(current_url: str):
+            transport, _host, _port = build_pinned_transport(current_url)
+            # trust_env=False: متغیرهای HTTP_PROXY/HTTPS_PROXY/ALL_PROXY
+            # نمیتوانند اتصال را از مسیر IP پینشده دور بزنند.
+            kwargs = dict(
+                timeout=net_timeout,
+                follow_redirects=False,
+                trust_env=False,
+            )
+            if transport is not None:
+                kwargs["transport"] = transport
+            return httpx.AsyncClient(**kwargs)
+
         async def _stream() -> AsyncIterator[bytes]:
+            current = info["url"]
             try:
-                # follow_redirects=False: ریدایرکت دستی و با validate میشود.
-                async with httpx.AsyncClient(timeout=net_timeout, follow_redirects=False) as client:
-                    current = info["url"]
-                    for _ in range(6):  # حداکثر ۵ ریدایرکت + درخواست اول
+                for _ in range(6):  # حداکثر ۵ ریدایرکت + درخواست اول
+                    validate_download_url(current)
+                    async with _client_for(current) as client:
                         async with client.stream("GET", current, headers=headers) as resp:
                             status = getattr(resp, "status_code", 200)
                             if status in {301, 302, 303, 307, 308}:
@@ -939,7 +957,7 @@ class SelfBot:
                             async for piece in resp.aiter_bytes(chunk_size=size):
                                 yield piece
                             return
-                    raise DownloadError("تعداد ریدایرکتهای دانلود بیش از حد مجاز است")
+                raise DownloadError("تعداد ریدایرکتهای دانلود بیش از حد مجاز است")
             except DownloadError:
                 raise
             except Exception as exc:  # noqa: BLE001

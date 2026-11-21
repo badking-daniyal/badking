@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### Download SSRF / DNS Rebinding Protection (2026-11-21)
+- آسیبپذیری واقعی DNS Rebinding در دانلود رسانه رفع شد: پیشتر `validate_download_url` تنها DNS را چک میکرد و httpx دوباره resolve میکرد.
+- ماژول جدید `badking/hybrid/ssrf.py` با `PinnedAsyncBackend` و `PinnedAsyncTransport`: اتصال دقیقاً به IP تأییدشده میرود، hostname اصلی در Origin میماند تا Host/SNI و اعتبارسنجی گواهی حفظ شوند.
+- `trust_env=False` و transport صریح: متغیرهای `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` نمیتوانند مسیر پینشده را دور بزنند.
+- رنجهای خطرناک تکمیل شدند: CGNAT (`100.64.0.0/10`)، `192.0.0.0/24`، benchmarking، IPv4-mapped IPv6، userinfo و پورتهای داخلی مسدود میشوند.
+- ریدایرکت هر مرحله دوباره اعتبارسنجی و پین میشود؛ Timeout کلی، سقف حجم و نوشتن اتمیک دستنخورده ماندند.
+- ۴۲ تست امنیتی جدید: `tests/test_ssrf_ip_pinning.py`، `tests/test_ssrf_live_socket.py` (سرور محلی واقعی — اثبات اتصال به IP پینشده و حفظ Host header)، `tests/test_ssrf_download_integration.py`.
+- مستندات: `docs/DOWNLOAD_SSRF_AUDIT.md`. تستها: ۱۴۶۰ پاس + ۶ SKIP.
+
 ### Client API Correctness & Protocol Audit (2026-11-21)
 - رفع ۵ باگ واقعی در `iter_messages`/`iter_dialogs` و Message Parsing:
   - صفحه کاملاً تکراری دیگر پیمایش را زود متوقف نمیکند (cursor با پیشرفت ایمن جلو میرود).

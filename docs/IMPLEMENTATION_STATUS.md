@@ -13,7 +13,7 @@
 
 | شاخص | مقدار واقعی |
 |---|---|
-| تستها | ۱۴۱۸ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
+| تستها | ۱۴۶۰ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
 | Exportها | ۱۹۰ |
 | پکیجها | ۳۴ |
 | نمونهها | ۲۸ |
@@ -21,7 +21,9 @@
 | CI | سبز روی Python ۳.۹ / ۳.۱۰ / ۳.۱۱ / ۳.۱۲ |
 | سایت مستندات | زنده — docs.badking.ir |
 | آخرین commit | (در انتظار commit Beta Hardening) |
-| دانلود رسانه SelfBot | IMPLEMENTED + 31 تست Mock — رفتار سرور BLOCKED |
+| دانلود رسانه SelfBot | IMPLEMENTED + IP Pinning `VERIFIED` — رفتار سرور زنده BLOCKED |
+| محافظت SSRF / DNS Rebinding (2026-11-21) | `VERIFIED` — ۴۲ تست (شامل اتصال Socket واقعی) — `docs/DOWNLOAD_SSRF_AUDIT.md` |
+| تعداد تستها (بهروزرسانی 2026-11-21) | ۱۴۶۰ پاس + ۶ SKIP |
 | Beta Hardening (۲۰۲۶-۱۱-۲۰) | ۹ باگ واقعی رفع شد + ۳۷ Regression test — `tests/test_beta_hardening.py` |
 | SelfBot Inline Keyboard (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED (source-confirmed) + ۱۲ تست — `docs/SELF_INLINE_KEYBOARD.md`؛ callback query BLOCKED (پروتکل داخلی فاقد آن است) |
 | Slow HTTP Trickle (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED + ۴ تست — `total_timeout` در دانلود؛ DNS Rebinding BLOCKED |
