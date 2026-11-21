@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+### Cross-Process Session Lock (2026-11-21)
+- علت Lost Update رفع شد: `put()`/`delete()` تنها با `threading.RLock` همان process محافظت میشدند و از cache منسوخ استفاده میکردند. بازتولید واقعی: ۲ process × ۵ نوشتن → تنها ۵ از ۱۰ حساب باقی میماند.
+- لایه قفل Between-Process جدید (`badking/hybrid/session_lock.py`) با `msvcrt.locking` (Windows) و `fcntl.flock` (POSIX) — stdlib خالص، بدون وابستگی جدید.
+- فایل قفل پایدار مجزا (`<session>.lock`) که توسط `os.replace` جایگزین نمیشود → قفل processها هنگام atomic write باطل نمیشود.
+- تمام عملیات RMW، migration، rollback، backup و خواندن تحت قفل thread + process قرار گرفتند.
+- متد اتمیک `update()` اضافه شد (`get()` سپس `put()` اتمیک نیست).
+- کش کلید مشتقشده (در حافظه، بهازای password/salt/rounds): هزینه نوشتن رمزدار ~۱.۳۸s → ~۰.۴۷–۰.۶۲s.
+- تستهای واقعی چندپردازشی: `tests/test_session_cross_process.py` (۱۱ تست، processهای OS واقعی) — ۲/۱۰ process، RMW، crash holder، timeout، ترکیب thread+process، migration همزمان، استرس ۴۰ حساب.
+- مستندات: `docs/SESSION_CROSS_PROCESS_LOCK.md`. تستها: ۱۴۸۷ پاس + ۶ SKIP. نسخه 0.2.2 بدون تغییر.
+
 ### Fail-Closed Hardening & Transport Review (2026-11-21)
 - آسیبپذیری Fail-Open رفع شد: پیشتر شکست DNS / پاسخ خالی / رکورد نامعتبر به `transport=None` و سپس AsyncClient معمولی بدون IP Pinning منتهی میشد. اکنون تمام این مسیرها استثنا میدهند و تنها AsyncClientای ساخته میشود که transport پینشده دارد.
 - `resolve_validated_ips` رکورد DNS نامعتبر و پاسخ خالی را صریحاً رد میکند؛ `build_pinned_transport` هرگز `None` برنمیگرداند.
