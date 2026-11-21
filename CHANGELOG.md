@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### SelfBot Inline Keyboard (2026-11-21)
+- `SelfBot.send_message()` پارامتر `reply_markup` میگیرد — ارسال inline keyboard از اکانت شخصی (source-confirmed from aiobale 0.3.9).
+- اسکیمای `InlineKeyboard` به ساختار واقعی پروتکل اصلاح شد: `InlineKeyboardMarkup{1:[Row{1:[Button]}]}`، دکمهها `text=1, url=2{wrapper}, callbackData=3{wrapper}, copyText=9{wrapper}`. `make_inline_keyboard` قبلی ساختار غلط `rows` داشت و هرگز استفاده نمیشد.
+- `make_text_content(text, reply_markup, temp_id)` زنجیره `MessageContent{13: TemplateMessage{1,2,5}}` را میسازد.
+- **محدودیت صریح**: callback query در پروتکل داخلی SelfBot وجود ندارد (هیچ update/RPC در aiobale 0.3.9) — هیچ `on_callback` حدسی اضافه نشد.
+- ۱۲ تست آفلاین (`tests/test_inline_keyboard.py`) + مستندات `docs/SELF_INLINE_KEYBOARD.md`. وضعیت Live-verified: BLOCKED (بدون حساب آزمایشی).
+
 ### Beta Hardening — Independent Audit Fixes (2026-11-20)
 - **سه ممیزی مستقل** (Client/Bot API، امنیت، تست/مستندات/CI) مستقیماً از کد خوانده شد؛ ادعاهای reports قبلی دوباره تأیید شدند.
 - **باگهای Client API رفعشده**: `get_pinned()` کلید پاسخ اشتباه (`pins_data` → `data`)؛ `edit_message()` تشخیص موفقیت بر اساس فیلد nonexistent؛ `stop_typing()` و `set_online()` فیلدهای اجباری `typing_type`/`timeout`؛ `add_contact()` پارامتر بیاثر (مستند شد چون پروتکل جای name ندارد).

@@ -27,6 +27,7 @@ from .proto import decode, get_int, get_str
 from .rpc import (
     make_chat,
     make_document_content,
+    make_inline_keyboard,
     make_text_content,
     PEER_TYPE,
     RpcRegistry,
@@ -577,20 +578,35 @@ class SelfBot:
         text: str,
         reply_to: int | None = None,
         silent: bool = False,
+        reply_markup: list[list[dict[str, Any]]] | dict[str, Any] | None = None,
     ) -> Message:
         """ارسال پیام متنی از اکانت شخصی.
 
         ساختار واقعی پروتکل:
             SendMessage{1: Peer, 2: message_id, 3: MessageContent, 5: reply_to, 6: Chat}
             MessageContent{15: TextMessage{1: value}}
+
+        Args:
+            reply_markup: کیبورد شیشهای اختیاری. یا لیست ردیف دکمهها
+                (مثلاً ``[[{"text": "بله", "callback_data": "yes"}]]``)،
+                یا خروجی :func:`make_inline_keyboard`. شماره فیلدها از سورس
+                aiobale 0.3.9 تأیید شدهاند. توجه: callback query در پروتکل
+                داخلی SelfBot وجود ندارد — فقط ارسال دکمه پشتیبانی میشود.
         """
         peer = await self.get_entity(ref)
         rid = int(time.time() * 1000)
+        markup = None
+        if reply_markup is not None:
+            markup = (
+                reply_markup
+                if isinstance(reply_markup, dict)
+                else make_inline_keyboard(reply_markup)
+            )
         resp = await self.call(
             "messaging.SendMessage",
             peer=peer.to_dict(),
             message_id=rid,
-            content=make_text_content(text),
+            content=make_text_content(text, reply_markup=markup, temp_id=rid),
             reply_to=(
                 {"peer": peer.to_dict(), "messageId": reply_to, "date": int(time.time())}
                 if reply_to

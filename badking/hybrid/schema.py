@@ -27,7 +27,13 @@ NESTED: dict[str, dict[str, object]] = {
     "DocumentMessage": {"fileId": 1, "accessHash": 2, "size": 3, "name": 4, "mimeType": 5, "thumb": {"field": 6, "fields": "Thumbnail"}, "ext": 7, "caption": {"field": 8, "fields": "MessageCaption"}},
     "MessageContent": {"document": {"field": 4, "fields": "DocumentMessage"}, "empty": 5, "serviceMessage": 11, "botMessage": {"field": 13, "fields": "TemplateMessage"}, "text": {"field": 15, "fields": {'value': 1}}, "gift": {"field": 17, "fields": "GiftPacket"}},
     "TemplateMessage": {"message": {"field": 1, "fields": "MessageContent"}, "tempId": 2, "inlineKeyboardMarkup": {"field": 5, "fields": "InlineKeyboard"}},
-    "InlineKeyboard": {"text": 1, "url": 2, "callbackData": 3, "copyText": 9},
+    # ساختار تأییدشده از aiobale 0.3.9 types/inline_keyboard.py:
+    #   InlineKeyboardMarkup{1: [Row{1: [Button]}]}
+    #   Button{1: text, 2: {1: url}, 3: {1: callback_data}, 9: {1: copy_text}}
+    # فیلدهای ۲/۳/۹ wrapper تکفیلدیاند (StringValue{value:1}).
+    "InlineButton": {"text": 1, "url": {"field": 2, "fields": "StringValue"}, "callbackData": {"field": 3, "fields": "StringValue"}, "copyText": {"field": 9, "fields": "StringValue"}},
+    "InlineKeyboardRow": {"buttons": {"field": 1, "fields": "InlineButton", "repeated": True}},
+    "InlineKeyboard": {"rows": {"field": 1, "fields": "InlineKeyboardRow", "repeated": True}},
     "OtherMessage": {"date": 1, "messageId": 2, "seq": 3},
     "InfoMessage": {"peer": {"field": 1, "fields": "Peer"}, "messageId": 2, "date": 3},
     "QuotedMessage": {"messageId": 1, "senderId": 3, "date": 4, "content": {"field": 5, "fields": "MessageContent"}, "peer": {"field": 6, "fields": "Peer"}},

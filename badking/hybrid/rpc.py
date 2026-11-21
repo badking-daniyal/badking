@@ -125,13 +125,37 @@ def make_chat(chat_type: str | int, chat_id: int) -> dict[str, Any]:
     return {"type": ctype, "id": int(chat_id)}
 
 
-def make_text_content(text: str) -> dict[str, Any]:
-    """MessageContent با متن — فیلد ۱۵، نه ۱.
+def make_text_content(
+    text: str,
+    reply_markup: dict[str, Any] | None = None,
+    temp_id: int | None = None,
+) -> dict[str, Any]:
+    """ساخت MessageContent متنی، با پشتیبانی اختیاری از inline keyboard.
 
-    ساختار واقعی بله:
+    ساختار واقعی (aiobale 0.3.9، source-confirmed):
         MessageContent{15: TextMessage{1: value}}
+    وقتی keyboard داده شود، متن داخل TemplateMessage قرار میگیرد:
+        MessageContent{13: TemplateMessage{
+            1: MessageContent{15: TextMessage{...}},
+            2: tempId,
+            5: InlineKeyboardMarkup{1: [Row{1: [Button]}]}
+        }}
+
+    ``reply_markup`` خروجی :func:`make_inline_keyboard` است.
     """
-    return {"text": {"value": text}}
+    content: dict[str, Any] = {"text": {"value": text}}
+    if reply_markup is None:
+        return content
+    import time
+
+    template: dict[str, Any] = {
+        "message": content,
+        "tempId": temp_id if temp_id is not None else int(time.time() * 1000),
+    }
+    # make_inline_keyboard کلید inlineKeyboardMarkup را برمیگرداند؛
+    # اسکیمای TemplateMessage دقیقاً همان نام را میپذیرد.
+    template.update(reply_markup)
+    return {"botMessage": template}
 
 
 def make_document_content(
@@ -159,8 +183,54 @@ def make_document_content(
 
 
 def make_inline_keyboard(rows: list[list[dict[str, Any]]]) -> dict[str, Any]:
-    """ساخت inline keyboard برای پیام ربات."""
-    return {"inlineKeyboardMarkup": {"rows": rows}}
+    """ساخت inline keyboard برای SelfBot (پروتکل داخلی بله).
+
+    ورودی لیستی از ردیفها، هر ردیف لیستی از دکمهها. هر دکمه دیکشنری با
+    کلیدهای دو شکل پذیرفته میشود:
+
+      * نامهای دوستانه: ``text``، ``url``، ``callback_data``، ``copy_text``
+      * نامهای اسکیما: ``text``، ``url``، ``callbackData``، ``copyText``
+
+    شماره فیلدها از سورس رسمی aiobale 0.3.9 تأیید شدهاند
+    (``types/inline_keyboard.py``):
+        InlineKeyboardMarkup{1: [Row{1: [Button]}]}
+        Button{1: text, 2: {1: url}, 3: {1: callback_data}, 9: {1: copy_text}}
+
+    نکته پروتکلی: callback query در پروتکل داخلی SelfBot وجود ندارد
+    (هیچ update type یا RPC مربوطهای در aiobale 0.3.9 نیست)، بنابراین
+    ``callback_data`` تنها بهعنوان payload خروجی ارسال میشود و هیچ رویداد
+    ``on_callback`` برای SelfBot وجود نخواهد داشت.
+    """
+    # سازگاری با نسخه قبلی: یک لیست تخت از دکمهها هم پذیرفته میشود
+    # (مثلاً [{"text": "بلی"}] بهعنوان یک ردیف تکدکمهای).
+    if rows and all(isinstance(item, dict) for item in rows):
+        rows = [rows]  # type: ignore[list-item]
+
+    normalized_rows: list[dict[str, Any]] = []
+    for row in rows:
+        if isinstance(row, dict):
+            row = [row]
+        buttons: list[dict[str, Any]] = []
+        for button in row:
+            if not isinstance(button, dict):
+                raise TypeError(f"دکمه باید dict باشد، نه {type(button).__name__}")
+            text = button.get("text")
+            if not isinstance(text, str) or not text:
+                raise ValueError("هر دکمه به متن 'text' غیرخالی نیاز دارد")
+            item: dict[str, Any] = {"text": text}
+            for src, dst in (
+                ("url", "url"),
+                ("callback_data", "callbackData"),
+                ("callbackData", "callbackData"),
+                ("copy_text", "copyText"),
+                ("copyText", "copyText"),
+            ):
+                value = button.get(src)
+                if value is not None:
+                    item[dst] = {"value": str(value)}
+            buttons.append(item)
+        normalized_rows.append({"buttons": buttons})
+    return {"inlineKeyboardMarkup": {"rows": normalized_rows}}
 
 
 # ---------- مشخصات یک RPC ----------
