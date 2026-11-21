@@ -82,7 +82,8 @@ RPC تأییدشده `files.GetNasimFileUrl` را صدا میزند و برمی�
 | `overwrite` | پیشفرض `False` → فایل تکراری با پسوند `(1)` ذخیره میشود |
 | `max_size` | سقف حجم، پیشفرض 2 GiB |
 | `chunk_size` | پیشفرض مقدار پیشنهادی سرور (aiobale: 65536) |
-| `timeout` | timeout شبکه، پیشفرض `self.timeout` |
+| `timeout` | timeout شبکه (per-operation)، پیشفرض `self.timeout` |
+| `total_timeout` | مهلت مطلق کل دانلود به ثانیه، پیشفرض ۶۰۰ — جلوی Slow HTTP Trickle را میگیرد؛ `None` = بدون محدودیت |
 | `on_progress(done, total)` | فراخوانی پیشرفت (اختیاری) |
 
 ### `Message.media_info() -> dict | None`
@@ -103,6 +104,12 @@ RPC تأییدشده `files.GetNasimFileUrl` را صدا میزند و برمی�
 - **حافظه**: جریان چانکبهچانک نوشته میشود؛ کل فایل در RAM بارگذاری نمیشود.
 - **هدرها**: فقط `User-Agent` و `Origin: https://web.bale.ai` — توکن دسترسی
   در GET دانلود فرستاده نمیشود (مطابق aiobale).
+- **SSRF**: URL سرور و هر ریدایرکت دوباره اعتبارسنجی میشوند؛ فقط HTTP(S) با
+  IP عمومی مجاز است. `follow_redirects=False` + حداکثر ۵ ریدایرکت.
+- **Slow HTTP Trickle**: `total_timeout` (پیشفرض ۶۰۰ ثانیه) یک مهلت مطلق
+  براساس ساعت دیوار است — برخلاف `timeout` که per-operation است. سروری که هر
+  چند ثانیه یک بایت بفرستد، بعد از مهلت متوقف و فایل موقت پاک میشود.
+  تست: `tests/test_slow_trickle.py`.
 
 ---
 
@@ -135,6 +142,10 @@ FileURL:          fileId=1, url=2, timeout=3, chunkSize=7
 - **Live verification**: بدون حساب آزمایشی مجاز، رفتار واقعی سرور تأیید نشده است.
 - **Media Resume**: هیچ پروتکل resumeای در aiobale وجود ندارد (`chunkSize` فقط
   اندازه قطعه است، نه offset). پیادهسازی نشد.
-- **Inline Callback** در SelfBot: BLOCKED (RPC مربوطه موجود نیست).
+- **Inline Callback** در SelfBot: BLOCKED (RPC مربوطه موجود نیست). ارسال دکمه
+  پیادهشده (`docs/SELF_INLINE_KEYBOARD.md`) ولی دریافت فشار دکمه ممکن نیست.
+- **DNS Rebinding**: `validate_download_url` IPها را در لحظه اعتبارسنجی چک
+  میکند، ولی بین resolve و connect فاصله است. حذف کامل نیاز به IP pinning
+  در اتصال httpx دارد — فعلاً **BLOCKED** (بدون تغییر رفتار پروتکل).
 - `FileInfo.fileStorageVersion` پیشفرض 1 ارسال نمیشود؛ اگر سرور آنرا الزامی
   کند، نیاز به ترافیک واقعی برای تأیید است.

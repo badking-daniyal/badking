@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### Slow HTTP Trickle Protection (2026-11-21)
+- `write_stream_atomic(deadline=...)` — مهلت مطلق (wall-clock) کل دانلود؛ برخلاف `timeout` شبکه که per-operation است.
+- `SelfBot.download_file(total_timeout=600)` — پیشفرض ایمن، قابل تنظیم، `None` = رفتار قبلی.
+- سرور کند (یک بایت در هر چند ثانیه) بعد از مهلت متوقف میشود و فایل موقت پاک میشود — فایل مقصد دستنخورده میماند.
+- ۴ تست (`tests/test_slow_trickle.py`) + مستندات `docs/MEDIA_DOWNLOAD.md`. DNS Rebinding صریحاً BLOCKED باقی ماند (نیاز به IP pinning).
+
 ### SelfBot Inline Keyboard (2026-11-21)
 - `SelfBot.send_message()` پارامتر `reply_markup` میگیرد — ارسال inline keyboard از اکانت شخصی (source-confirmed from aiobale 0.3.9).
 - اسکیمای `InlineKeyboard` به ساختار واقعی پروتکل اصلاح شد: `InlineKeyboardMarkup{1:[Row{1:[Button]}]}`، دکمهها `text=1, url=2{wrapper}, callbackData=3{wrapper}, copyText=9{wrapper}`. `make_inline_keyboard` قبلی ساختار غلط `rows` داشت و هرگز استفاده نمیشد.

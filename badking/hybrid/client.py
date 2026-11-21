@@ -835,6 +835,7 @@ class SelfBot:
         max_size: int = DEFAULT_MAX_SIZE,
         chunk_size: int | None = None,
         timeout: float | None = None,
+        total_timeout: float = 600.0,
         on_progress: Callable[[int, int], Any] | None = None,
     ) -> Path:
         """دانلود جریانی رسانه به دیسک (بدون بارگذاری کامل در RAM).
@@ -849,6 +850,8 @@ class SelfBot:
             max_size: سقف حجم (پیشفرض 2 GiB).
             chunk_size: اندازه قطعه؛ پیشفرض مقدار پیشنهادی سرور.
             timeout: timeout شبکه به ثانیه (پیشفرض ``self.timeout``).
+            total_timeout: مهلت مطلق کل دانلود به ثانیه (پیشفرض ۶۰۰).
+                جلوی Slow HTTP Trickle را میگیرد. ``None`` = بدون محدودیت.
             on_progress: فراخوانی ``(downloaded, total)``.
 
         Returns:
@@ -922,6 +925,7 @@ class SelfBot:
             chunk_size=size,
             overwrite=overwrite,
             on_progress=on_progress,
+            deadline=total_timeout,
         )
         return target
 

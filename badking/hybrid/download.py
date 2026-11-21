@@ -16,6 +16,7 @@ import os
 import re
 import socket
 import tempfile
+import time
 from pathlib import Path
 from typing import AsyncIterator
 from urllib.parse import unquote, urljoin, urlparse
@@ -196,6 +197,7 @@ async def write_stream_atomic(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     overwrite: bool = False,
     on_progress: object = None,
+    deadline: float | None = None,
 ) -> int:
     """نوشتن جریان به دیسک بهصورت اتمیک و با مصرف حافظه ثابت.
 
@@ -206,11 +208,15 @@ async def write_stream_atomic(
       * تجاوز از ``max_size``، خطای شبکه یا هر استثنا → فایل موقت پاک میشود
         و فایل مقصد (در صورت وجود) دستنخورده میماند.
       * ``on_progress(downloaded, total)`` در صورت ارائه صدا زده میشود.
+      * ``deadline`` (ثانیه) مهلت مطلق کل دانلود است — جلوی Slow HTTP
+        Trickle را میگیرد (سروری که هر چند ثانیه یک بایت میفرستد).
+        ``None`` یعنی محدودیتی اضافه نمیشود (رفتار نسخههای قبل).
     """
     if max_size <= 0:
         raise DownloadError("max_size باید مثبت باشد")
     if chunk_size <= 0:
         raise DownloadError("chunk_size باید مثبت باشد")
+    ends_at = time.monotonic() + deadline if deadline is not None else None
 
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists() and not overwrite:
@@ -224,6 +230,11 @@ async def write_stream_atomic(
     try:
         with os.fdopen(fd, "wb") as fh:
             async for chunk in stream:
+                if ends_at is not None and time.monotonic() > ends_at:
+                    raise DownloadError(
+                        "زمان دانلود از حد مجاز فراتر رفت",
+                        hint="سرور خیلی کند پاسخ میدهد (Slow HTTP Trickle).",
+                    )
                 if not chunk:
                     continue
                 written += len(chunk)

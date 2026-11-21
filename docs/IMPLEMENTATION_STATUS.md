@@ -13,7 +13,7 @@
 
 | شاخص | مقدار واقعی |
 |---|---|
-| تستها | ۱۳۵۶ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
+| تستها | ۱۳۶۰ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
 | Exportها | ۱۹۰ |
 | پکیجها | ۳۴ |
 | نمونهها | ۲۸ |
@@ -24,6 +24,7 @@
 | دانلود رسانه SelfBot | IMPLEMENTED + 31 تست Mock — رفتار سرور BLOCKED |
 | Beta Hardening (۲۰۲۶-۱۱-۲۰) | ۹ باگ واقعی رفع شد + ۳۷ Regression test — `tests/test_beta_hardening.py` |
 | SelfBot Inline Keyboard (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED (source-confirmed) + ۱۲ تست — `docs/SELF_INLINE_KEYBOARD.md`؛ callback query BLOCKED (پروتکل داخلی فاقد آن است) |
+| Slow HTTP Trickle (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED + ۴ تست — `total_timeout` در دانلود؛ DNS Rebinding BLOCKED |
 
 ### نتایج ممیزی مستقل Beta (۲۰۲۶-۱۱-۲۰)
 
