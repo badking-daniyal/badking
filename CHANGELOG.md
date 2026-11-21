@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### Fail-Closed Hardening & Transport Review (2026-11-21)
+- آسیبپذیری Fail-Open رفع شد: پیشتر شکست DNS / پاسخ خالی / رکورد نامعتبر به `transport=None` و سپس AsyncClient معمولی بدون IP Pinning منتهی میشد. اکنون تمام این مسیرها استثنا میدهند و تنها AsyncClientای ساخته میشود که transport پینشده دارد.
+- `resolve_validated_ips` رکورد DNS نامعتبر و پاسخ خالی را صریحاً رد میکند؛ `build_pinned_transport` هرگز `None` برنمیگرداند.
+- `PinnedAsyncTransport` رسماً subclass از `httpx.AsyncBaseTransport` شد (قرارداد صریح، ایمن در صورت نبود httpx).
+- وابستگی به API داخلی httpx/httpcore (`AsyncResponseStream`، `AutoBackend`) مستند و با تست سازگاری پوشش شد.
+- تستهای جدید: `tests/test_ssrf_fail_closed.py` (6) و `tests/test_ssrf_transport_compat.py` (7) — اثبات صفر AsyncClient بدون pinning هنگام شکست DNS، ریدایرکت ناامن، Cancellation و عدم باقی ماندن Task.
+- تستها: ۱۴۷۶ پاس + ۶ SKIP. نسخه 0.2.2 بدون تغییر.
+
 ### Download SSRF / DNS Rebinding Protection (2026-11-21)
 - آسیبپذیری واقعی DNS Rebinding در دانلود رسانه رفع شد: پیشتر `validate_download_url` تنها DNS را چک میکرد و httpx دوباره resolve میکرد.
 - ماژول جدید `badking/hybrid/ssrf.py` با `PinnedAsyncBackend` و `PinnedAsyncTransport`: اتصال دقیقاً به IP تأییدشده میرود، hostname اصلی در Origin میماند تا Host/SNI و اعتبارسنجی گواهی حفظ شوند.

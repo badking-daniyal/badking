@@ -154,15 +154,24 @@ def resolve_validated_ips(url: str) -> tuple[str, int, list[str]]:
         return host, port, [str(literal)]
     try:
         infos = socket.getaddrinfo(host, port)
-    except (socket.gaierror, OSError):
-        # DNS در محیط آفلاین/تست دردسترس نیست. رفتار نسخههای قبل حفظ
-        # میشود: validate خطا نمیدهد و httpx خودش خطای شبکه میدهد.
-        # IP Pinning در connect تنها زمانی اعمال میشود که IPای وجود داشته
-        # باشد (پس در محیط واقعی که DNS کار میکند، همیشه اعمال میشود).
-        return host, port, []
+    except (socket.gaierror, OSError) as exc:
+        # Fail-Closed: بدون IP تأییدشده نباید هیچ اتصالی برقرار شود.
+        # بازگشت لیست خالی در اینجا به معنای آزاد کردن مسیر اتصال بدون
+        # Pinning است — پس صریحاً خطا میدهیم.
+        raise DownloadError(
+            "نمیتوان میزبان دانلود را resolve کرد؛ اتصال مسدود شد",
+            hint="DNS دردسترس نیست یا پاسخ نامعتبر است.",
+        ) from exc
     ips: list[str] = []
     for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except (ValueError, IndexError, TypeError) as exc:
+            # پاسخ DNS نامعتبر — Fail-Closed، نه نادیده گرفتن رکورد.
+            raise DownloadError(
+                "پاسخ DNS نامعتبر است؛ اتصال مسدود شد",
+                hint="سرور DNS رکورد IP قابلقبولی برنگرداند.",
+            ) from exc
         if not is_public_ip(ip):
             raise DownloadError(
                 "دانلود از آدرس خصوصی/داخلی مجاز نیست",
@@ -171,6 +180,12 @@ def resolve_validated_ips(url: str) -> tuple[str, int, list[str]]:
         text = str(ip)
         if text not in ips:
             ips.append(text)
+    if not ips:
+        # DNS پاسخ خالی داد — Fail-Closed.
+        raise DownloadError(
+            "میزبان دانلود هیچ IP قابلاعتمادی ندارد؛ اتصال مسدود شد",
+            hint="پاسخ DNS خالی است.",
+        )
     return host, port, ips
 
 

@@ -147,7 +147,12 @@ def test_validate_download_url_blocks_non_http_schemes():
             validate_download_url(url)
 
 
-def test_validate_download_url_allows_public_https():
+def test_validate_download_url_allows_public_https(monkeypatch):
+    import socket
+    monkeypatch.setattr(
+        socket, "getaddrinfo",
+        lambda host, port: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.158.134.3", port, 0, 0))],
+    )
     assert validate_download_url("https://cdn.bale.ai/f/abc") == "https://cdn.bale.ai/f/abc"
 
 

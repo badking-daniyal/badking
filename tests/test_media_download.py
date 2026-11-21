@@ -213,10 +213,18 @@ class FakeTransport:
 
 def _make_bot(monkeypatch, file_bytes: bytes, url: str):
     """SelfBot با transport جعلی + سرور HTTP جعلی (httpx MockTransport)."""
+    import socket
     import httpx
     from badking.hybrid.proto import encode_named
     from badking.hybrid.rpc import registry
     from badking.hybrid.client import SelfBot
+
+    # Fail-Closed: بدون DNS قابل resolve، دانلود مسدود میشود. تستها آفلایناند
+    # پس DNS جعلی معتبر (IP عمومی) نصب میکنیم تا رفتار دانلود حفظ شود.
+    monkeypatch.setattr(
+        socket, "getaddrinfo",
+        lambda host, port: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.158.134.3", port, 0, 0))],
+    )
 
     spec = registry.get("files.GetNasimFileUrl")
     inner = encode_named(

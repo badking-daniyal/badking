@@ -88,7 +88,10 @@ class PinnedAsyncBackend:
         await self._backend().sleep(seconds)
 
 
-class PinnedAsyncTransport:
+_BaseTransport = httpx.AsyncBaseTransport if httpx is not None else object
+
+
+class PinnedAsyncTransport(_BaseTransport):
     """``httpx.AsyncBaseTransport`` مبتنی بر pool با IP پینشده.
 
     ``trust_env=False`` است تا متغیرهای ``HTTP_PROXY`` / ``HTTPS_PROXY`` /
@@ -167,11 +170,14 @@ def build_pinned_transport(url: str, *, verify: bool = True) -> Any:
         ``(transport, host, port)`` — transport آماده برای ``httpx.AsyncClient``.
     """
     host, port, ips = resolve_validated_ips(url)
+    # Fail-Closed: resolve_validated_ips در صورت شکست DNS / پاسخ خالی /
+    # رکورد نامعتبر استثنا میدهد. اگر به هر دلیل لیست خالی رسید، باز هم
+    # نباید transport بدون pinning ساخت — صریحاً خطا میدهیم.
     if not ips:
-        # DNS دردسترس نبود؛ نمیتوان پین کرد. فراخواننده باید از حالت
-        # معمولی (بدون pinning) استفاده کند — در محیط واقعی با DNS سالم
-        # این حالت رخ نمیدهد.
-        return None, host, port
+        raise DownloadError(
+            "هیچ IP تأییدشدهای برای اتصال موجود نیست؛ دانلود مسدود شد",
+            hint="Fail-Closed: اتصال بدون IP Pinning مجاز نیست.",
+        )
     # اگر چند IP وجود دارد، تمام آنها قبلاً توسط resolve_validated_ips
     # اعتبارسنجی شدهاند. ما به اولین IP میپینیم تا همان IP تأییدشده استفاده
     # شود (هیچ resolve مجددی در مسیر اتصال رخ نمیدهد).

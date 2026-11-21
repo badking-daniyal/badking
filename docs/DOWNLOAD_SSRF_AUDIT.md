@@ -55,11 +55,29 @@ proxy محیطی نمیتوانند اتصال را از مسیر پینشده �
 | حفظ `Host: cdn.test` در سرور مقصد | `VERIFIED` |
 | ریدایرکت به `127.0.0.1` مسدود شد | `VERIFIED` |
 | مسیر `download_file`transport پینشده میسازد | `VERIFIED` |
-| DNS دردسترس نباشد → بدون pinning (رفتار قدیم) | `VERIFIED` |
+| Fail-Closed: شکست DNS / پاسخ خالی / رکورد نامعتبر / Timeout → استثنا، صفر AsyncClient بدون pinning | `VERIFIED` |
+| ریدایرکت به دامنه با DNS نامعتبر → متوقف، بدون اتصال جایگزین | `VERIFIED` |
+| Cancellation هنگام اتصال پینشده + عدم باقی ماندن Task | `VERIFIED` |
+| وابستگی به API داخلی httpx/httpcore صریح و تستشده | `VERIFIED` |
 
-تستها: `tests/test_ssrf_ip_pinning.py` (39)، `tests/test_ssrf_live_socket.py`
-(1)، `tests/test_ssrf_download_integration.py` (2). سرور محلی تست، آفلاین و
-بدون حساب واقعی است. تست زنده اینترنتی: **BLOCKED** (بدون حساب مجاز).
+**بازبینی Fail-Closed (2026-11-21):** در پیادهسازی قبلی سه حلقه fail-open وجود
+داشت: `resolve_validated_ips` هنگام شکست DNS لیست خالی برمیگرداند،
+`build_pinned_transport` در آن صورت `None` میداد، و `_client_for` AsyncClient
+معمولی بدون transport میساخت. اکنون هر سه مسیر استثنا میدهند و تنها
+AsyncClientای ساخته میشود که transport پینشده داشته باشد.
+
+تستها: `tests/test_ssrf_ip_pinning.py`، `tests/test_ssrf_live_socket.py`،
+`tests/test_ssrf_download_integration.py`، `tests/test_ssrf_fail_closed.py`،
+`tests/test_ssrf_transport_compat.py`. سرور محلی تست، آفلاین و بدون حساب واقعی
+است. تست زنده اینترنتی: **BLOCKED** (بدون حساب مجاز).
+
+**وابستگی به API داخلی:** IP Pinning از سه API استفاده میکند:
+`httpcore.AsyncConnectionPool(network_backend=...)` (عمومی در httpcore 1.x)،
+`httpx._transports.default.AsyncResponseStream` (داخلی httpx، برای Streaming)
+و `httpcore._backends.auto.AutoBackend` (داخلی httpcore). تست
+`test_ssrf_transport_compat.py` وجود و امضای آنها را بررسی میکند تا تغییر
+API در ارتقای وابستگیها زود دیده شود. نسخههای آزمایششده: httpx 0.28.1 /
+httpcore 1.0.9.
 
 ## ۴. محدودیتها و ریسکهای باقیمانده
 
@@ -71,5 +89,8 @@ proxy محیطی نمیتوانند اتصال را از مسیر پینشده �
   (تست در صورت عدم امکان SKIP میشود).
 - رنجهای IP آینده ممکن است نیاز به بهروزرسانی لیست `_EXTRA_BLOCKED_NETWORKS`
   داشته باشند.
-- بدون pinning (وقتی DNS دردسترس نیست) محافظت rebinding کامل نیست — ولی در آن
-  حالت اتصال هم معمولاً ناموفق است و رفتار نسخه قبل حفظ شده است.
+- `BLOCKED`: Cancellation هنگام Resolve بهصورت آفلاین قابل آزمایش نیست، چون
+  `socket.getaddrinfo` مسدودکننده و غیرقابل لغو است. Cancellation هنگام اتصال
+  پینشده `VERIFIED` است.
+- رفتار Fail-Closed یعنی بدون DNS هیچ دانلودی انجام نمیشود — حتی اگر سرور بله
+  URL معتبری بدهد. این یک تغییر رفتاری عمدی و امنیتر از نسخه قبل است.

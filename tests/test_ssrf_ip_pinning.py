@@ -58,7 +58,9 @@ def test_ambiguous_or_internal_urls_rejected(url):
         validate_download_url(url)
 
 
-def test_public_url_accepted():
+def test_public_url_accepted(monkeypatch):
+    # DNS جعلی معتبر: محیط آفلاین نباید مانع تست «پذیرش URL عمومی» شود.
+    monkeypatch.setattr(socket, "getaddrinfo", _fake_getaddrinfo(["93.158.134.3"]))
     assert validate_download_url("https://cdn.bale.ai/f/abc") == "https://cdn.bale.ai/f/abc"
 
 
@@ -158,17 +160,52 @@ async def test_pinned_backend_ignores_rebound_hostname(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_no_pinning_when_dns_unavailable(monkeypatch):
-    """DNS ناموفق → transport None (رفتار قدیمی حفظ میشود)."""
+async def test_dns_failure_is_fail_closed(monkeypatch):
+    """DNS ناموفق → استثنا، NOT transport معمولی (Fail-Closed)."""
     from badking.hybrid import ssrf
 
     def fail(host, port):
         raise socket.gaierror("no dns")
 
     monkeypatch.setattr(socket, "getaddrinfo", fail)
-    transport, host, port = ssrf.build_pinned_transport("https://offline.test/f")
-    assert transport is None
-    assert host == "offline.test"
+    with pytest.raises(DownloadError):
+        ssrf.build_pinned_transport("https://offline.test/f")
+
+
+@pytest.mark.asyncio
+async def test_dns_empty_response_is_fail_closed(monkeypatch):
+    """پاسخ DNS خالی → استثنا، NOT اتصال بدون pinning."""
+    from badking.hybrid import ssrf
+
+    monkeypatch.setattr(socket, "getaddrinfo", lambda host, port: [])
+    with pytest.raises(DownloadError):
+        ssrf.build_pinned_transport("https://empty.test/f")
+
+
+@pytest.mark.asyncio
+async def test_dns_invalid_record_is_fail_closed(monkeypatch):
+    """رکورد DNS نامعتبر → استثنا، NOT نادیده گرفتن رکورد."""
+    from badking.hybrid import ssrf
+
+    monkeypatch.setattr(
+        socket, "getaddrinfo",
+        lambda host, port: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("not-an-ip", port, 0, 0))],
+    )
+    with pytest.raises(DownloadError):
+        ssrf.build_pinned_transport("https://bad.test/f")
+
+
+@pytest.mark.asyncio
+async def test_dns_timeout_is_fail_closed(monkeypatch):
+    """DNS Timeout → استثنا، NOT مسیر جایگزین ناامن."""
+    from badking.hybrid import ssrf
+
+    def timeout(host, port):
+        raise TimeoutError("dns timeout")
+
+    monkeypatch.setattr(socket, "getaddrinfo", timeout)
+    with pytest.raises(DownloadError):
+        ssrf.build_pinned_transport("https://slow.test/f")
 
 
 # --------------------------------------------------------------------------

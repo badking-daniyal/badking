@@ -927,17 +927,18 @@ class SelfBot:
         from .ssrf import build_pinned_transport
 
         def _client_for(current_url: str):
+            # Fail-Closed: transport پینشده الزامی است. اگر DNS شکست بخورد
+            # یا IP تأییدشدهای نباشد، build_pinned_transport استثنا میدهد
+            # و هیچ AsyncClient بدون transport ساخته نمیشود.
             transport, _host, _port = build_pinned_transport(current_url)
             # trust_env=False: متغیرهای HTTP_PROXY/HTTPS_PROXY/ALL_PROXY
             # نمیتوانند اتصال را از مسیر IP پینشده دور بزنند.
-            kwargs = dict(
+            return httpx.AsyncClient(
+                transport=transport,
                 timeout=net_timeout,
                 follow_redirects=False,
                 trust_env=False,
             )
-            if transport is not None:
-                kwargs["transport"] = transport
-            return httpx.AsyncClient(**kwargs)
 
         async def _stream() -> AsyncIterator[bytes]:
             current = info["url"]
