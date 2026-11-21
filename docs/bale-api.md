@@ -35,6 +35,28 @@
 - `answerCallbackQuery` حتماً باید فراخوانی شود وگرنه دکمه در حالت انتظار میماند.
 - `ForumTopic`: فیلدهای `icon_color` و `icon_custom_emoji_id` برگردانده نمیشوند.
 
+## آپلود فایل (multipart)
+
+مستندات رسمی میگوید: `multipart/form-data` برای آپلود فایل، و `application/json`
+برای بقیه موارد. BADKING این را خودکار انجام میدهد:
+
+```python
+from badking import Bot
+
+bot = Bot("123456:ABC...")
+# مسیر فایل محلی → درخواست multipart/form-data
+await bot.send_photo(chat_id, "photo.jpg", caption="توضیح")
+await bot.send_document(chat_id, "report.pdf")
+# file_id یا URL → درخواست application/json (بدون تغییر رفتار)
+await bot.send_photo(chat_id, "AgACAgIAAxkBAAI")
+```
+
+- تشخیص براساس «وجود فایل روی دیسک» است؛ file_id و URL دستنخورده میمانند.
+- در حالت multipart، پارامترهای ساختاریافته (مثل `reply_markup`) بهصورت
+  JSON-string ارسال میشوند — چون form field فقط رشته میپذیرد.
+- سقف‌های رسمی: ۱۰MB برای عکس و ۵۰MB برای سند.
+- تست: `tests/test_bot_multipart_upload.py`.
+
 ## مینیاپ
 - شی `window.Bale.WebApp`، ساختار `WebAppInitData`.
 - امضای HMAC-SHA256: ابتدا `secret = HMAC_SHA256(key="WebAppData", msg=bot_token)`، سپس امضای `data_check_string` (فیلدها الفبایی مرتب و با `\n` متصل) با `secret`.

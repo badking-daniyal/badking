@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -30,6 +32,29 @@ def _clean(obj: Any) -> Any:
     if isinstance(obj, (list, tuple)):
         return [_clean(v) for v in obj]
     return obj
+
+
+def _local_upload(field: str, value: Any) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    """اگر ``value`` یک فایل محلی موجود است، زوج (payload, files) برگردان.
+
+    در غیر این صورت (file_id، URL یا هر رشته دیگر) ``None`` برگردان تا
+    رفتار فعلی (JSON) حفظ شود. تشخیص براساس وجود فایل روی دیسک است —
+    حدس درباره فرمت file_id یا URL نمیزنیم.
+    """
+    if not isinstance(value, (str, os.PathLike)):
+        return None
+    try:
+        path = Path(value)
+        if not path.is_file():
+            return None
+    except (OSError, ValueError):
+        return None
+    import mimetypes
+
+    mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    # file object بهجای bytes: فایل بزرگ در RAM بارگذاری نمیشود.
+    # httpx خودش آن را میبندد (close=True پیشفرض).
+    return {}, {field: (path.name, path.open("rb"), mime)}
 
 
 class Bot:
@@ -80,7 +105,26 @@ class Bot:
         client = await self._get_client()
         try:
             if files:
-                resp = await client.post(url, data=payload, files=files)
+                # مستندات رسمی بله: multipart/form-data مخصوص آپلود فایل است.
+                # اشیای ساختاریافته (reply_markup و ...) باید JSON-string شوند،
+                # چون form field فقط رشته میپذیرد.
+                form = {
+                    k: (json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v)
+                    for k, v in payload.items()
+                }
+                try:
+                    resp = await client.post(url, data=form, files=files)
+                finally:
+                    # file objectها را خودمان میبندیم — به بستن transport
+                    # وابسته نمیشویم (MockTransport این کار را نمیکند).
+                    for item in files.values():
+                        handle = item[1] if isinstance(item, (tuple, list)) else item
+                        close = getattr(handle, "close", None)
+                        if callable(close):
+                            try:
+                                close()
+                            except OSError:
+                                pass
             else:
                 resp = await client.post(url, json=payload)
         except httpx.HTTPError as e:
@@ -149,39 +193,64 @@ class Bot:
             "chat_id": chat_id, "from_chat_id": from_chat_id, "message_id": message_id, **kwargs,
         }))
 
+    async def _send_media(self, method: str, field: str, value: Any,
+                          params: dict[str, Any]) -> Message:
+        """ارسال رسانه؛ اگر ``value`` فایل محلی باشد، multipart استفاده میشود.
+
+        مستندات رسمی بله: برای آپلود فایل باید ``multipart/form-data`` فرستاد
+        (و ``application/json`` برای بقیه پارامترها مجاز نیست).
+        """
+        upload = _local_upload(field, value)
+        if upload is not None:
+            extra, files = upload
+            payload = {**params, **extra}
+            payload.pop(field, None)
+            return Message.model_validate(
+                await self.request(method, payload, files=files)
+            )
+        return Message.model_validate(
+            await self.request(method, {**params, field: value})
+        )
+
     async def send_photo(self, chat_id: int | str, photo: str, *, caption: str | None = None,
                          reply_markup: Any = None, **kwargs: Any) -> Message:
-        return Message.model_validate(await self.request("sendPhoto", {
-            "chat_id": chat_id, "photo": photo, "caption": caption,
+        """ارسال عکس. ``photo`` میتواند file_id، URL یا مسیر فایل محلی باشد."""
+        return await self._send_media("sendPhoto", "photo", photo, {
+            "chat_id": chat_id, "caption": caption,
             "reply_markup": reply_markup, **kwargs,
-        }))
+        })
 
     async def send_document(self, chat_id: int | str, document: str, *, caption: str | None = None,
                             reply_markup: Any = None, **kwargs: Any) -> Message:
-        return Message.model_validate(await self.request("sendDocument", {
-            "chat_id": chat_id, "document": document, "caption": caption,
+        """ارسال سند. ``document`` میتواند file_id، URL یا مسیر فایل محلی باشد."""
+        return await self._send_media("sendDocument", "document", document, {
+            "chat_id": chat_id, "caption": caption,
             "reply_markup": reply_markup, **kwargs,
-        }))
+        })
 
     async def send_audio(self, chat_id: int | str, audio: str, **kwargs: Any) -> Message:
-        return Message.model_validate(await self.request("sendAudio", {
-            "chat_id": chat_id, "audio": audio, **kwargs,
-        }))
+        """ارسال فایل صوتی. ``audio`` میتواند file_id، URL یا مسیر فایل محلی باشد."""
+        return await self._send_media("sendAudio", "audio", audio, {
+            "chat_id": chat_id, **kwargs,
+        })
 
     async def send_video(self, chat_id: int | str, video: str, **kwargs: Any) -> Message:
-        return Message.model_validate(await self.request("sendVideo", {
-            "chat_id": chat_id, "video": video, **kwargs,
-        }))
+        """ارسال ویدیو. ``video`` میتواند file_id، URL یا مسیر فایل محلی باشد."""
+        return await self._send_media("sendVideo", "video", video, {
+            "chat_id": chat_id, **kwargs,
+        })
 
     async def send_animation(self, chat_id: int | str, animation: str, **kwargs: Any) -> Message:
-        return Message.model_validate(await self.request("sendAnimation", {
-            "chat_id": chat_id, "animation": animation, **kwargs,
-        }))
+        """ارسال انیمیشن. ``animation`` میتواند file_id، URL یا مسیر فایل محلی باشد."""
+        return await self._send_media("sendAnimation", "animation", animation, {
+            "chat_id": chat_id, **kwargs,
+        })
 
     async def send_voice(self, chat_id: int | str, voice: str, **kwargs: Any) -> Message:
-        return Message.model_validate(await self.request("sendVoice", {
-            "chat_id": chat_id, "voice": voice, **kwargs,
-        }))
+        """ارسال پیام صوتی. ``voice`` میتواند file_id، URL یا مسیر فایل محلی باشد."""
+        return await self._send_media("sendVoice", "voice", voice, {
+            "chat_id": chat_id, **kwargs,
+        })
 
     async def send_location(self, chat_id: int | str, latitude: float, longitude: float,
                             **kwargs: Any) -> Message:

@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+### Bot API Multipart File Upload (2026-11-21)
+- `send_photo`/`send_document`/`send_audio`/`send_video`/`send_voice`/`send_animation` حالا مسیر فایل محلی را میپذیرند و طبق مستندات رسمی بله درخواست `multipart/form-data` میفرستند. file_id و URL همچنان JSON میمانند (رفتار قبلی حفظ شد).
+- باگ: در حالت multipart، `reply_markup` و سایر اشیاء JSON بهصورت `str(dict)` ارسال میشدند (فرمت پایتونی، نه JSON). حالا با `json.dumps` سریالایز میشوند.
+- پیش از این تغییر، هیچ متدی Bot API پارامتر `files` را پرتاب نمیکرد — آپلود فایل عملاً پیاده نشده بود.
+- ۶ تست که شکل واقعی درخواست را میسنجند (`tests/test_bot_multipart_upload.py`) + مستندات `docs/bale-api.md`.
+
 ### Slow HTTP Trickle Protection (2026-11-21)
 - `write_stream_atomic(deadline=...)` — مهلت مطلق (wall-clock) کل دانلود؛ برخلاف `timeout` شبکه که per-operation است.
 - `SelfBot.download_file(total_timeout=600)` — پیشفرض ایمن، قابل تنظیم، `None` = رفتار قبلی.
