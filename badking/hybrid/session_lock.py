@@ -49,8 +49,18 @@ class FileLockUnavailable(Exception):
     """هیچ مکانیزم قفل فایل در این پلتفرم موجود نیست."""
 
 
-# وضعیت قفل بهازای thread — برای reentrancy در همان thread.
+# وضعیت قفل بهازای thread — دیکشنری بهازای key تا reentrancy چند-path
+# (مثلاً قفل A سپس B و دوباره A) دچار خود-deadlock نشود. نسخه قبل فقط آخرین
+# قفل thread را نگه میداشت و بازگشت به A را بهعنوان contention اشتباه میگرفت.
 _local = threading.local()
+
+
+def _thread_locks() -> dict[str, dict[str, int]]:
+    locks = getattr(_local, "locks", None)
+    if locks is None:
+        locks = {}
+        _local.locks = locks
+    return locks
 
 
 def lock_path_for(path: str | Path) -> Path:
@@ -78,8 +88,9 @@ def cross_process_lock(
         FileLockUnavailable: اگر نه msvcrt و نه fcntl موجود نباشد.
     """
     key = str(Path(path).resolve())
-    state = getattr(_local, "state", None)
-    if state is not None and state["key"] == key:
+    locks = _thread_locks()
+    state = locks.get(key)
+    if state is not None:
         # Reentrant در همان thread — فقط شمارش عمق.
         state["depth"] += 1
         try:
@@ -136,13 +147,13 @@ def cross_process_lock(
                     time.sleep(delay * (0.5 + (os.urandom(1)[0] / 255.0)))
 
         st = {"key": key, "fd": fd, "depth": 1}
-        _local.state = st
+        locks[key] = st
         try:
             yield
         finally:
             st["depth"] -= 1
-            if getattr(_local, "state", None) is st and st["depth"] == 0:
-                _local.state = None
+            if locks.get(key) is st and st["depth"] == 0:
+                del locks[key]
     finally:
         if acquired:
             try:

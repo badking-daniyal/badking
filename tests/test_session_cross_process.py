@@ -13,6 +13,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -90,6 +91,39 @@ def _migrate_worker(path, password, barrier):
         store.migrate_to_v2(backup=True)
     except Exception:
         pass  # برخی processها ممکن است بعد از migrate شکست بخورند — مجاز است
+    if barrier is not None:
+        try:
+            barrier.wait(timeout=60)
+        except Exception:
+            pass
+
+
+def _rollback_worker(path, password, barrier):
+    sys.path.insert(0, _HERE)
+    from badking.hybrid.session import SessionStore
+
+    store = SessionStore(path, password=password)
+    try:
+        store.rollback_migration()
+    except Exception:
+        pass
+    if barrier is not None:
+        try:
+            barrier.wait(timeout=60)
+        except Exception:
+            pass
+
+
+def _mixed_ops_worker(path, password, base, barrier):
+    """ترکیب put / update / delete روی کلیدهای مجزا."""
+    sys.path.insert(0, _HERE)
+    from badking.hybrid.session import Session, SessionStore
+
+    store = SessionStore(path, password=password)
+    for i in range(3):
+        n = base + i
+        store.put(Session(user_id=n, access_token=f"tok-{n}"))
+        store.update(f"user:{n}", lambda s: s)
     if barrier is not None:
         try:
             barrier.wait(timeout=60)
@@ -255,6 +289,144 @@ def test_lock_timeout_is_bounded(tmp_path):
         else:  # pragma: no cover
             fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
+
+
+def test_concurrent_rollback_keeps_sessions(tmp_path):
+    """چند process همزمان rollback میکنند — بکاپ سالم باقی بماند."""
+    path = tmp_path / "s.session"
+    password = "rb-pass"
+    store = SessionStore(path, password=password)
+    for n in range(1, 4):
+        store.put(Session(user_id=n, access_token=f"tok-{n}"))
+    store.backup()
+    args = [(str(path), password, None) for _ in range(4)]
+    assert _run_workers(_rollback_worker, args) == [0] * 4
+    final = SessionStore(path, password=password).load_all()
+    assert len(final) == 3
+    for n in range(1, 4):
+        assert final[f"user:{n}"].access_token == f"tok-{n}"
+
+
+def test_mixed_update_delete_put_concurrent(tmp_path):
+    """رقابت update/delete/put — هیچ session سالمی از بین نرود."""
+    path = tmp_path / "s.session"
+    args = [(str(path), None, i * 3 + 1, None) for i in range(4)]
+    assert _run_workers(_mixed_ops_worker, args) == [0] * 4
+    final = SessionStore(path).load_all()
+    assert len(final) == 12, f"Lost Update: {len(final)}/12"
+    for n in range(1, 13):
+        assert final[f"user:{n}"].access_token == f"tok-{n}"
+
+
+def test_wrong_password_and_corrupt_files(tmp_path):
+    """پسورد اشتباه، فایل خالی و فایل ناقص → SessionError امن."""
+    from badking.hybrid.session import SessionError
+
+    path = tmp_path / "s.session"
+    SessionStore(path, password="right").put(Session(user_id=1, access_token="t"))
+    with pytest.raises(SessionError):
+        SessionStore(path, password="wrong").load_all()
+
+    empty = tmp_path / "empty.session"
+    empty.write_bytes(b"")
+    with pytest.raises(SessionError):
+        SessionStore(empty, password="pw").load_all()
+
+    truncated = tmp_path / "trunc.session"
+    truncated.write_bytes(b"BKS2\x03" + b"\x00" * 5)
+    with pytest.raises(SessionError):
+        SessionStore(truncated, password="pw").load_all()
+
+
+def test_update_missing_key_and_invalid_return(tmp_path):
+    """update(): نبودن کلید → None؛ بازگشت None → SessionError امن."""
+    from badking.hybrid.session import SessionError
+
+    path = tmp_path / "s.session"
+    store = SessionStore(path)
+    assert store.update("nope", lambda s: s) is None
+
+    store.put(Session(user_id=1, access_token="original"))
+    with pytest.raises(SessionError):
+        store.update("user:1", lambda s: None)
+    # فایل سالم باقی مانده است
+    assert store.load_all()["user:1"].access_token == "original"
+
+
+def test_data_preserved_after_failed_write(tmp_path):
+    """خطای نوشتن نباید فایل سالم قبلی را خراب کند."""
+    from badking.hybrid.session import SessionError
+
+    path = tmp_path / "s.session"
+    store = SessionStore(path, password="pw")
+    store.put(Session(user_id=1, access_token="original"))
+
+    # شبیهسازی خطا در مسیر نوشتن: updater استثنا بدهد
+    def bad_updater(s):
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        store.update("user:1", bad_updater)
+
+    final = SessionStore(path, password="pw").load_all()
+    assert final["user:1"].access_token == "original"
+
+
+def test_reentrant_multi_path_does_not_self_deadlock(tmp_path):
+    """قفل A سپس B و دوباره A نباید خود-deadlock بدهد (باگ بازبینی)."""
+    from badking.hybrid.session_lock import cross_process_lock
+
+    d = tmp_path
+    a, b = d / "a.session", d / "b.session"
+    result = {}
+
+    def worker():
+        with cross_process_lock(a, timeout=5):
+            with cross_process_lock(b, timeout=5):
+                with cross_process_lock(a, timeout=5):
+                    result["ok"] = True
+
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join(timeout=15)
+    assert not t.is_alive(), "خود-deadlock در reentrancy چند-path"
+    assert result.get("ok") is True
+
+
+def test_lock_timeout_env_validation():
+    """مقادیر نامعتبر BADKING_SESSION_LOCK_TIMEOUT نباید کرش یا منفی شوند.
+
+    از ریلود ماژول selfdagه میشود چون ثوابت/کلاسهای ایمپورتشده توسط تستهای
+    دیگه را ناسازگار میکند. تابع خالص ``_read_lock_timeout`` مستقیماً آزمایش
+    میشود — همان منطقی که هنگام import اجرا میشود.
+    """
+    import badking.hybrid.session as sm
+
+    original = os.environ.get("BADKING_SESSION_LOCK_TIMEOUT")
+    try:
+        for bad in ("abc", "-5", "", "nan", "inf"):
+            os.environ["BADKING_SESSION_LOCK_TIMEOUT"] = bad
+            assert sm._read_lock_timeout() == 120.0, f"{bad} پذیرفته شد"
+        os.environ["BADKING_SESSION_LOCK_TIMEOUT"] = "7.5"
+        assert sm._read_lock_timeout() == 7.5
+    finally:
+        if original is None:
+            os.environ.pop("BADKING_SESSION_LOCK_TIMEOUT", None)
+        else:
+            os.environ["BADKING_SESSION_LOCK_TIMEOUT"] = original
+
+
+def test_key_cache_does_not_store_raw_password():
+    """password خام نباید در کلیدهای کش مشاهده شود."""
+    import badking.hybrid.session as sm
+
+    sm._KEY_CACHE.clear()
+    secret = "super-secret-password-xyz"
+    sm._derive_key(secret, b"\x01" * 16, 100_000)
+    keys_repr = repr(list(sm._KEY_CACHE.keys()))
+    assert secret not in keys_repr
+    assert isinstance(next(iter(sm._KEY_CACHE.keys()))[0], bytes)
+    sm._KEY_CACHE.clear()
 
 
 def test_mixed_threads_and_processes(tmp_path):

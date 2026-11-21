@@ -68,9 +68,20 @@ ROUNDS_OFFSET = 5                              # بعد از magic(4)+mode(1)
 # 0.6 ثانیه طول میکشد؛ در RMW مکرر همان فایل، salt decryption ثابت است و
 # مشتقکردن مجدد کلید بیهوده است. کش فقط در حافظه process است و هرگز روی
 # دیسک نوشته نمیشود. محدود به 32 ورودی برای جلوگیری از رشد حافظه.
-_KEY_CACHE: dict[tuple[str, bytes, int], bytes] = {}
+_KEY_CACHE: dict[tuple[bytes, bytes, int], bytes] = {}
 _KEY_CACHE_GUARD = threading.Lock()
 _KEY_CACHE_MAX = 32
+
+# شناسهی cache بهجای password خام: HMAC-SHA256 با کلید تصادفی سطح-ماژول.
+# هدف: password بهصورت خام و طولانیمدت در حافظه (کلید dict) نماند. این
+# شناسه یکطرفه است و کلید مشتقشده را تغییر نمیدهد؛ فقط کلید dict را
+# غیرقابل بازگشت میکند. salt تصادفی هر process جداگانه است.
+_CACHE_ID_KEY = os.urandom(32)
+
+
+def _password_cache_id(password: str) -> bytes:
+    """شناسه یکطرفه password برای کلید cache (بدون نگهداشتن متن خام)."""
+    return hmac.new(_CACHE_ID_KEY, password.encode("utf-8"), hashlib.sha256).digest()
 
 
 def _derive_key(password: str, salt: bytes, rounds: int = PBKDF2_ROUNDS) -> bytes:
@@ -81,7 +92,7 @@ def _derive_key(password: str, salt: bytes, rounds: int = PBKDF2_ROUNDS) -> byte
     """
     if not MIN_PBKDF2_ROUNDS <= rounds <= MAX_PBKDF2_ROUNDS:
         raise SessionError("تعداد iteration در هدر session نامعتبر است")
-    cache_key = (password, salt, rounds)
+    cache_key = (_password_cache_id(password), salt, rounds)
     with _KEY_CACHE_GUARD:
         cached = _KEY_CACHE.get(cache_key)
         if cached is not None:
@@ -135,7 +146,19 @@ _PATH_LOCKS: weakref.WeakValueDictionary[str, threading.RLock] = (
 _PATH_LOCKS_GUARD = threading.Lock()
 
 # حد پیشفرض انتظار برای قفل Between-Process (قابل تنظیم توسط محیط).
-SESSION_LOCK_TIMEOUT = float(os.environ.get("BADKING_SESSION_LOCK_TIMEOUT", "120"))
+# مقدار نامعتبر یا منفی نباید هنگام import کرش کند یا قفل بیانتها صبر کند.
+def _read_lock_timeout() -> float:
+    raw = os.environ.get("BADKING_SESSION_LOCK_TIMEOUT", "120")
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return 120.0
+    if value < 0 or value != value or value == float("inf"):
+        return 120.0
+    return value
+
+
+SESSION_LOCK_TIMEOUT = _read_lock_timeout()
 
 
 def _lock_for(path: Path) -> threading.RLock:
@@ -612,6 +635,12 @@ class SessionStore:
             if current is None:
                 return None
             updated = updater(current)
+            if not isinstance(updated, Session):
+                # جلوگیری از ذخیره شدن None/نوع نامعتبر و کرش مبهم حین
+                # سریالیزه کردن. فایل سالم باقی میماند چون هنوز نوشته نشده.
+                raise SessionError(
+                    "updater باید یک Session معتبر برگرداند"
+                )
             sessions[key] = updated
             return updated
 

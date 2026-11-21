@@ -13,7 +13,7 @@
 
 | شاخص | مقدار واقعی |
 |---|---|
-| تستها | ۱۴۸۷ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
+| تستها | ۱۴۹۵ پاس (آفلاین) + ۱ SKIP + ۵ live SKIP |
 | Exportها | ۱۹۰ |
 | پکیجها | ۳۴ |
 | نمونهها | ۲۸ |
@@ -25,7 +25,7 @@
 | محافظت SSRF / DNS Rebinding (2026-11-21) | `VERIFIED` — شامل اتصال Socket واقعی — `docs/DOWNLOAD_SSRF_AUDIT.md` |
 | Fail-Closed IP Pinning (2026-11-21) | `VERIFIED` — شکست DNS هرگز به اتصال بدون pinning منتهی نمیشود |
 | قفل Between-Process Session Storage (2026-11-21) | `VERIFIED` — ۱۱ تست process واقعی، جلوگیری کامل Lost Update — `docs/SESSION_CROSS_PROCESS_LOCK.md` |
-| تعداد تستها (بهروزرسانی 2026-11-21) | ۱۴۸۷ پاس + ۶ SKIP |
+| تعداد تستها (بهروزرسانی 2026-11-21) | ۱۴۹۵ پاس + ۶ SKIP |
 | Beta Hardening (۲۰۲۶-۱۱-۲۰) | ۹ باگ واقعی رفع شد + ۳۷ Regression test — `tests/test_beta_hardening.py` |
 | SelfBot Inline Keyboard (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED (source-confirmed) + ۱۲ تست — `docs/SELF_INLINE_KEYBOARD.md`؛ callback query BLOCKED (پروتکل داخلی فاقد آن است) |
 | Slow HTTP Trickle (۲۰۲۶-۱۱-۲۱) | IMPLEMENTED + ۴ تست — `total_timeout` در دانلود؛ DNS Rebinding BLOCKED |

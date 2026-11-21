@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### Independent Review — Cross-Process Session Storage (2026-11-21)
+- باگ پیشگیرانه reentrancy چند-path رفع شد: `_local.state` تکمقداری فقط آخرین قفل thread را نگه میداشت و الگوی «قفل A → B → دوباره A» دچار خود-deadlock (`FileLockTimeout`) میشد؛ اکنون دیکشنری بهازای key.
+- اعتبارسنجی `BADKING_SESSION_LOCK_TIMEOUT`: مقادیر نامعتبر/منفی/`nan`/`inf` اکنون به پیشفرض 120 برمیگردند و کرش هنگام import نمیدهند.
+- امنیت کش PBKDF2: password خام از کلید کش حذف و با شناسه یکطرفه HMAC-SHA256 جایگزین شد؛ الگوریتم مشتقسازی و BKS3/AES-GCM/AAD بدون تغییر.
+- `update()`: بازگشت `None` یا نوع نامعتبر از updater اکنون با `SessionError` واضح رد میشود (پیشتر کرش مبهم `AttributeError`)؛ رفتار نبودن کلید → `None` مستند و تست شد.
+- تستهای واقعی process/new: rollback همزمان، رقابت update/delete/put، password اشتباه، فایل خالی/ناقص، حفظ داده بعد از خطای نوشتن، reentrancy چند-path، اعتبارسنجی timeout، عدم نگهداری password خام. تستها: ۱۴۹۵ پاس + ۶ SKIP. نسخه 0.2.2 بدون تغییر.
+
 ### Cross-Process Session Lock (2026-11-21)
 - علت Lost Update رفع شد: `put()`/`delete()` تنها با `threading.RLock` همان process محافظت میشدند و از cache منسوخ استفاده میکردند. بازتولید واقعی: ۲ process × ۵ نوشتن → تنها ۵ از ۱۰ حساب باقی میماند.
 - لایه قفل Between-Process جدید (`badking/hybrid/session_lock.py`) با `msvcrt.locking` (Windows) و `fcntl.flock` (POSIX) — stdlib خالص، بدون وابستگی جدید.
